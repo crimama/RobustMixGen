@@ -1,16 +1,16 @@
-train_file: ['data/vqa_train.json',
-             'data/vqa_val.json',   
-             'data/vg_qa.json']
+train_file: ['data/json_downstream/vqa_train.json',
+             'data/json_downstream/vqa_val.json',   
+             'data/json_downstream/vg_qa.json']
              
-test_file: ['data/vqa_test.json']
-answer_list: 'data/answer_list.json'
+test_file: ['data/json_downstream/vqa_test.json']
+answer_list: 'data/json_downstream/answer_list.json'
 
-vqa_root: '/export/share/datasets/vision/VQA/Images/mscoco/' #train2014/
+vqa_root: '/Volume/img2txt/RobustMixGen/data/Images/coco/' #train2014/
 vg_root: '/export/share/datasets/vision/visual-genome/'  #image/
 
 image_res: 384
-batch_size_train: 32 
-batch_size_test: 16 
+batch_size_train: 2
+batch_size_test: 2 
 k_test: 128
 
 alpha: 0.4

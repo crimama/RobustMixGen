@@ -1,16 +1,16 @@
-train_file: ['data/refcoco+_train.json']
-test_file: ['data/refcoco+_val.json','data/refcoco+_test.json']
+train_file: ['data/json_downstream/refcoco+_train.json']
+test_file: ['data/json_downstream/refcoco+_val.json','data/json_downstream/refcoco+_test.json']
 
 refcoco_data: 'data'
-det_file: 'data/refcoco+/dets.json'            
-coco_file: 'data/refcoco+/cocos.json'    
+det_file: 'data/json_downstream/refcoco+/dets.json'            
+coco_file: 'data/json_downstream/refcoco+/cocos.json'    
 
-image_root: '/export/share/datasets/vision/coco/images/'
+image_root: '/Volume/img2txt/RobustMixGen/data/Images/coco/'
 
 bert_config: 'configs/config_bert.json'
 
 image_res: 384
-batch_size: 32
+batch_size: 4
 
 queue_size: 65536
 momentum: 0.995
