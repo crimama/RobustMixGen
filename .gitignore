@@ -129,4 +129,6 @@ dmypy.json
 .pyre/
 /data
 data/
-
+*.zip
+.zip
+*.pth 
