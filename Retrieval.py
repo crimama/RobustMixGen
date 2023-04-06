@@ -39,6 +39,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        #!if config['mixgen']:
+        #!        image, text = mg.mixgen(image, text, num=16)
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
         text_input = tokenizer(text, padding='longest', max_length=30, return_tensors="pt").to(device)  
