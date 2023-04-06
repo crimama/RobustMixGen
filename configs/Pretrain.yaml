@@ -1,11 +1,11 @@
-# train_file: ['data/coco.json',
-#                'data/vg.json',
-#                'data/cc12m.json',
-#                'data/cc3m_train.json',
-#                'data/cc3m_val.json',
-#                'data/sbu.json'               
+# train_file: ['data/json_pretrain/coco.json',
+#                'data/json_pretrain/vg.json',
+#                'data/json_pretrain/cc12m.json',
+#                'data/json_pretrain/cc3m_train.json',
+#                'data/json_pretrain/cc3m_val.json',
+#                'data/json_pretrain/sbu.json'               
 #                ]
-train_file: ['data/coco.json']
+train_file: ['data/json_pretrain/coco.json']
 # each train_file (json) contains a python list where each item is {'image': img_path, 'caption': text or list_of_text }               
 bert_config: 'configs/config_bert.json'
 
