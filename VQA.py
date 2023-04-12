@@ -128,7 +128,7 @@ def main(args, config):
     
     train_loader, test_loader = create_loader(datasets,samplers,
                                               batch_size=[config['batch_size_train'],config['batch_size_test']],
-                                              num_workers=[4,4],is_trains=[True, False], 
+                                              num_workers=[0,0],is_trains=[True, False], 
                                               collate_fns=[vqa_collate_fn,None]) 
 
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)

@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import numpy as np
 import random
 import time
@@ -123,7 +123,7 @@ def main(args, config):
 
     train_loader, val_loader, test_loader = create_loader(datasets,samplers,
                                                           batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
-                                                          num_workers=[4,4,4],is_trains=[True,False,False], 
+                                                          num_workers=[0,0,0],is_trains=[True,False,False], 
                                                           collate_fns=[None,None,None])
 
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)

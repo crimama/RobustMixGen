@@ -98,15 +98,15 @@ class ALBEF(nn.Module):
                                         return_dict = True, mode = 'text')            
         text_embeds = text_output.last_hidden_state
         text_feat = F.normalize(self.text_proj(text_embeds[:,0,:]),dim=-1)                 
-             
+
         # get momentum features
         with torch.no_grad():
             self._momentum_update()
             image_embeds_m = self.visual_encoder_m(image) 
             image_feat_m = F.normalize(self.vision_proj_m(image_embeds_m[:,0,:]),dim=-1)  
             image_feat_all = torch.cat([image_feat_m.t(),self.image_queue.clone().detach()],dim=1)                                         
-            text_output_m = self.text_encoder_m.bert(text.input_ids, attention_mask = text.attention_mask,                      
-                                                return_dict = True, mode = 'text')    
+            
+            text_output_m = self.text_encoder_m.bert(text.input_ids, attention_mask = text.attention_mask,return_dict = True, mode = 'text')    
             text_feat_m = F.normalize(self.text_proj_m(text_output_m.last_hidden_state[:,0,:]),dim=-1) 
             text_feat_all = torch.cat([text_feat_m.t(),self.text_queue.clone().detach()],dim=1)
 
@@ -129,7 +129,7 @@ class ALBEF(nn.Module):
 
         self._dequeue_and_enqueue(image_feat_m, text_feat_m)
 
-        ###=================================###
+        ###============= ITM =================###
         # forward the positve image-text pair
         output_pos = self.text_encoder.bert(encoder_embeds = text_embeds, 
                                         attention_mask = text.attention_mask,

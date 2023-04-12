@@ -133,3 +133,5 @@ Images/
 .zip
 *.pth 
 *.json
+
+data/temp/

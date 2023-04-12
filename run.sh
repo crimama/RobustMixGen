@@ -1,6 +1,7 @@
+#! Pretrain 
 #python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain.py --config ./configs/Pretrain.yaml 
 
-#! Image Retrieval - coco 
+# #! Image Retrieval - coco 
 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
     --config ./configs/Retrieval_coco.yaml --output_dir output/Retrieval_coco \
     --checkpoint ./output/Pretrain/ALBEF.pth
@@ -12,11 +13,10 @@ python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
 #     --checkpoint ./output/Pretrain/ALBEF.pth
 
 #!  SNLI-VE : Visual Entailment 
-
-# python -m torch.distributed.launch --nproc_per_node=2 --use_env VE.py \
-#     --config ./configs/VE.yaml \
-#     --output_dir output/VE \
-# #   --checkpoint ./output/Pretrain/ALBEF.pth
+#python -m torch.distributed.launch --nproc_per_node=2 --use_env VE.py \
+#    --config ./configs/VE.yaml \
+#    --output_dir output/VE \
+#   --checkpoint ./output/Pretrain/ALBEF.pth
 
 #! NLVR
 # python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain_nlvr.py \
@@ -25,7 +25,6 @@ python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
 #     --checkpoint ./output/Pretrain/ALBEF.pth
 
 #! Visual Grounding 
-
 # python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain_nlvr.py \
 #     --config ./configs/NLVR_pretrain.yaml \
 #     --output_dir output/NLVR_pretrain \
