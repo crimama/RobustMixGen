@@ -1,12 +1,12 @@
-train_file: 'data/ve_train.json'
-val_file: 'data/ve_dev.json'                
-test_file: 'data/ve_test.json'
+train_file: 'data/json_downstream/ve_train.json'
+val_file: 'data/json_downstream/ve_dev.json'                
+test_file: 'data/json_downstream/ve_test.json'
 
-image_root: '/export/home/project/SNLI-VE/data/images'
+image_root: 'data/Images/Flickr30k/'
 
 image_res: 384
-batch_size_train: 32 
-batch_size_test: 64 
+batch_size_train: 2
+batch_size_test: 2 
 
 alpha: 0.4
 distill: True

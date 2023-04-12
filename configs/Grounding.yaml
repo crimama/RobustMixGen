@@ -5,7 +5,7 @@ refcoco_data: 'data'
 det_file: 'data/json_downstream/refcoco+/dets.json'            
 coco_file: 'data/json_downstream/refcoco+/cocos.json'    
 
-image_root: '/Volume/img2txt/RobustMixGen/data/Images/coco/'
+image_root: 'data/Images/coco/'
 
 bert_config: 'configs/config_bert.json'
 

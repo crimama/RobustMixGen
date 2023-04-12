@@ -1,7 +1,7 @@
 train_file:  ['data/json_downstream/coco_train.json']
 val_file: 'data/json_downstream/coco_val.json'                
 test_file: 'data/json_downstream/coco_test.json'
-image_root: '/Volume/img2txt/RobustMixGen/data/Images/coco/'
+image_root: 'data/Images/coco/'
 
 
 bert_config: 'configs/config_bert.json'

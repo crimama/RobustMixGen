@@ -5,8 +5,8 @@ train_file: ['data/json_downstream/vqa_train.json',
 test_file: ['data/json_downstream/vqa_test.json']
 answer_list: 'data/json_downstream/answer_list.json'
 
-vqa_root: '/Volume/img2txt/RobustMixGen/data/Images/coco/' #train2014/
-vg_root: '/export/share/datasets/vision/visual-genome/'  #image/
+vqa_root: 'data/Images/coco/' #train2014/
+vg_root: 'data/Images/VG'  #image/
 
 image_res: 384
 batch_size_train: 2
