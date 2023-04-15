@@ -5,3 +5,7 @@ pip install opencv-python
 pip install ruamel.yaml 
 apt-get update && apt-get install libgl1
 apt-get install libglib2.0
+
+git clone https://github.com/cocodataset/cocoapi.git
+cd cocoapi/PythonAPI
+make
