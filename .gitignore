@@ -133,6 +133,6 @@ dmypy.json
 .zip
 *.pth 
 *.json
-data/__MACOSX/
-data/temp/
+
+data/temp
 cocoapi/
