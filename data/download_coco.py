@@ -68,6 +68,11 @@ if __name__ == "__main__":
     print("Unzipping annotations to {}".format(str(storage_dir_)))
     with zipfile.ZipFile(storage_dir_/"annotations_trainval2014.zip", 'r') as zip_ref:
         zip_ref.extractall(storage_dir_)
+    # move file to upper directory
+    for folder in [item for item in os.listdir(storage_dir_/"annotations") if os.path.isdir(os.path.join(storage_dir_/"annotations", item))]:
+        os.rename(storage_dir_/"annotations"/file, storage_dir_/file)
+    os.rmdir(storage_dir_/"annotations")
+    
     os.remove(storage_dir_/"annotations_trainval2014.zip")
     #remove the json file in the storage_dir
     print("Done unzipping annotations to {}".format(str(storage_dir_)))

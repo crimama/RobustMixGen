@@ -30,6 +30,7 @@ import utils
 from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
+import mixgen as mg
 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
@@ -51,9 +52,10 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         data_loader.sampler.set_epoch(epoch)
 
     for i, (image, text) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        
+        #image, text =mg.mixgen(image, text, num=16)
+        #image, text =mg.ro_mixgen(image, text)
         optimizer.zero_grad()
-  
+
         image = image.to(device,non_blocking=True) 
 
         text_input = tokenizer(text, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device)  
