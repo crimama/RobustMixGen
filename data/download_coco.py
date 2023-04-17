@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     download_dir = Path("./data/download")
     storage_dir = Path("./data/COCO/Images/raw_images")
-    storage_dir_ = Path("./dataCOCO/Annotations")
+    storage_dir_ = Path("./data/COCO/Annotations")
 
     if storage_dir.exists():
         print(f"Dataset already exists at {storage_dir}. Aborting.")
