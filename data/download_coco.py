@@ -29,8 +29,8 @@ def download_datasets(root, url):
 if __name__ == "__main__":
 
     download_dir = Path("./data/download")
-    storage_dir = Path("./data/Images/coco")
-    storage_dir_ = Path("./data/Annotations/coco")
+    storage_dir = Path("./data/COCO/Images/raw_images")
+    storage_dir_ = Path("./data/COCO/Annotations")
 
     if storage_dir.exists():
         print(f"Dataset already exists at {storage_dir}. Aborting.")
