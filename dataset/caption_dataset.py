@@ -11,7 +11,7 @@ Image.MAX_IMAGE_PIXELS = None
 
 from dataset.utils import pre_caption
 
-
+'''
 class re_train_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root, max_words=30):        
         self.ann = []
@@ -42,8 +42,47 @@ class re_train_dataset(Dataset):
         
         caption = pre_caption(ann['caption'], self.max_words) 
 
-        return image, caption, self.img_ids[ann['image_id']]
+        return image, caption, self.img_ids[ann['image_id']],ann['image_id']
+'''
+class re_train_dataset(Dataset):
+    def __init__(self, ann_file,romixgen,transform, image_root,mixgen=True,mixgen_ratio=0.1, max_words=30):        
+        self.ann = []
+        for f in ann_file:
+            self.ann += json.load(open(f,'r'))
+        self.transform = transform
+        self.image_root = image_root
+        self.max_words = max_words
+        
+        self.romixgen = romixgen 
+        self.mixgen = mixgen 
+        self.mixgen_ratio = mixgen_ratio
+        
+        self.img_ids = {}   
+        
+        n = 0
+        for ann in self.ann:
+            img_id = ann['image_id']
+            if img_id not in self.img_ids.keys():
+                self.img_ids[img_id] = n
+                n += 1    
+        
+    def __len__(self):
+        return len(self.ann)
     
+    def __getitem__(self, index):    
+        ann = self.ann[index]
+        
+        if (self.mixgen) & (random.random() < self.mixgen_ratio):
+            image,caption = self.romixgen(ann)
+        else:
+            image_path = os.path.join(self.image_root,ann['image'])
+            image = Image.open(image_path).convert('RGB')
+            image = self.transform(image)
+        
+            caption = pre_caption(ann['caption'],self.max_words)
+        
+        return image, caption, self.img_ids[ann['image_id']]
+
     
 
 class re_eval_dataset(Dataset):
