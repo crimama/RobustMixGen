@@ -12,7 +12,7 @@ from dataset.utils import pre_caption
 
 class RoMixGen:
     def __init__(self,json_file,image_root,transform_after_mix,normal_image_root,normal_image_transform,max_words= 50, resize_ratio=1):
-        self.obj_bg_df = pd.DataFrame(json_file[0])
+        self.obj_bg_df = pd.DataFrame.from_dict(json_file[0], orient='index',columns=['obj_bg'])
         self.aug_json = json_file[1]
         self.image_root = image_root 
         self.resize_ratio = resize_ratio 
@@ -110,11 +110,21 @@ class RoMixGen:
         obj_img = Image.open(os.path.join(self.image_root,'obj',self.obj_inform['file_name'])).convert('RGB')
         bg_img  = Image.open(os.path.join(self.image_root,'bg',self.bg_inform['file_name'])).convert('RGB')
         
+        # Preprocess for obj,bg image 
         obj_img = self.__obj_img__(obj_img)
         bg_img = self.__bg_img__(obj_img,bg_img)
         
+        # transforms after mix 
         img = self.transform_after_mix(Image.fromarray(bg_img))
         return img 
+    
+    #def __txt_mix__(self,obj_id,bg_id)
+        
+    def mix(self,obj_id,bg_id):
+        
+        img = self.__img_mix__(obj_id,bg_id)
+        #txt = self.__txt_mix__(obj_id,bg_id)
+        return img,'_'
         
     def normal_load(self,ann):
         image_path = os.path.join(self.normal_image_root,ann['image'])
@@ -123,28 +133,24 @@ class RoMixGen:
         caption = pre_caption(ann['caption'],self.max_words)
         return image,caption 
         
-    def mix(self,obj_id,bg_id):
-        
-        img = self.__img_mix__(obj_id,bg_id)
-        #txt = self.__txt_mix__(obj_id,bg_id)
-        return img,'_'
-        
-        
     def __call__(self,ann):
         image_id = ann['image_id'].split('_')[-1]
         try:
             if self.aug_json[image_id]['obj_bg'] =='obj':
                 obj_id = image_id 
-                bg_id = np.random.choice(self.obj_bg_df[self.obj_bg_df[1]=='bg'][0].values)
+                #bg_id = np.random.choice(self.obj_bg_df[self.obj_bg_df[1]=='bg'][0].values)
+                bg_id = self.obj_bg_df[self.obj_bg_df['obj_bg']=='bg'].sample(1).index[0]
                 img,caption = self.mix(obj_id,bg_id)
                 
             elif self.aug_json[image_id]['obj_bg'] == 'bg':
                 bg_id = image_id 
-                obj_id = np.random.choice(self.obj_bg_df[self.obj_bg_df[1]=='obj'][0].values)
+                #obj_id = np.random.choice(self.obj_bg_df[self.obj_bg_df[1]=='obj'][0].values)
+                obj_id = self.obj_bg_df[self.obj_bg_df['obj_bg']=='obj'].sample(1).index[0]
                 img,caption = self.mix(obj_id,bg_id)            
             else:
                 img,caption = self.normal_load(ann)
         except:
-            img,caption = self.normal_load(ann)    
+            img,caption = self.normal_load(ann) 
+               
         return img,caption
             
