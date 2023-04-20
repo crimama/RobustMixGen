@@ -9,3 +9,5 @@ apt-get install libglib2.0
 git clone https://github.com/cocodataset/cocoapi.git
 cd cocoapi/PythonAPI
 make
+
+pip install sentencepiece
