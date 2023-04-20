@@ -136,3 +136,5 @@ dmypy.json
 
 data/temp
 cocoapi/
+._.DS_Store
+.DS_Store
