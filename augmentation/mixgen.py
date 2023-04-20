@@ -48,3 +48,45 @@ class MixGen:
         text = text1 + ' ' + text2
         
         return image,text
+
+# 보류 
+
+''' 
+class MixGen_Img:
+    def __init__(self,image_caption,image_root,transform,lam =0.5):
+        self.image_caption   = image_caption
+        self.image_root = image_root
+        self.transform  = transform 
+        self.lam  = lam
+        
+    def __call__(self,ann):
+        ann1 = ann
+        image1 = Image.open(os.path.join(self.image_root,ann1['image']))
+        
+        ann2 = np.random.choice(self.image_caption)
+        image2 = Image.open(os.path.join(self.image_root,ann2['image']))
+        
+        image = self.lam * self.transform(image1) + (1-self.lam) * self.transform(image2)
+        
+        return image
+    
+    
+class MixGen_Img:
+    def __init__(self,image_caption,image_root,transform,lam =0.5):
+        self.image_caption   = image_caption
+        self.image_root = image_root
+        self.transform  = transform 
+        self.lam  = lam
+        
+    def __call__(self,ann):
+        ann1 = ann
+        image1 = Image.open(os.path.join(self.image_root,ann1['image']))
+        
+        ann2 = np.random.choice(self.image_caption)
+        image2 = Image.open(os.path.join(self.image_root,ann2['image']))
+        
+        image = self.lam * self.transform(image1) + (1-self.lam) * self.transform(image2)
+        
+        return image
+        
+'''
