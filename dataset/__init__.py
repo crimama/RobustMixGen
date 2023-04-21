@@ -2,6 +2,9 @@ import torch
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from PIL import Image
+import json 
+import yaml 
+import pandas as pd 
 
 from dataset.caption_dataset import re_train_dataset, re_eval_dataset, pretrain_dataset
 from dataset.nlvr_dataset import nlvr_dataset
@@ -11,38 +14,50 @@ from dataset.grounding_dataset import grounding_dataset
 
 from dataset.randaugment import RandomAugment
 
+from augmentation import create_romixgen 
+
 def create_dataset(dataset, config):
     
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
     
-    pretrain_transform = transforms.Compose([                        
-            transforms.RandomResizedCrop(config['image_res'],scale=(0.2, 1.0), interpolation=Image.BICUBIC),
-            transforms.RandomHorizontalFlip(),
-            RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                              'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
-            transforms.ToTensor(),
-            normalize,
-        ])    
-    train_transform = transforms.Compose([                        
-            transforms.RandomResizedCrop(config['image_res'],scale=(0.5, 1.0), interpolation=Image.BICUBIC),
-            transforms.RandomHorizontalFlip(),
-            RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                              'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
-            transforms.ToTensor(),
-            normalize,
-        ])  
-    test_transform = transforms.Compose([
-        transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
-        transforms.ToTensor(),
-        normalize,
-        ])   
+    pretrain_transform  = transforms.Compose([                        
+                                            transforms.RandomResizedCrop(config['image_res'],scale=(0.2, 1.0), interpolation=Image.BICUBIC),
+                                            transforms.RandomHorizontalFlip(),
+                                            RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
+                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+                                            transforms.ToTensor(),
+                                            normalize,
+                                            ])    
+    train_transform     = transforms.Compose([                        
+                                            transforms.RandomResizedCrop(config['image_res'],scale=(0.5, 1.0), interpolation=Image.BICUBIC),
+                                            transforms.RandomHorizontalFlip(),
+                                            RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
+                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+                                            transforms.ToTensor(),
+                                            normalize,
+                                            ])  
+    test_transform      = transforms.Compose([
+                                            transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
+                                            transforms.ToTensor(),
+                                            normalize,
+                                            ])
+    
+    mixgen = create_romixgen(config)
+
+    
     
     if dataset=='pretrain':
         dataset = pretrain_dataset(config['train_file'], pretrain_transform)                  
         return dataset      
                
     elif dataset=='re':          
-        train_dataset = re_train_dataset(config['train_file'], train_transform, config['image_root'])
+        train_dataset = re_train_dataset(ann_file    = config['train_file'],
+                                        romixgen     = mixgen, 
+                                        transform    = train_transform,
+                                        image_root   = config['image_root'],
+                                        mixgen_ratio = config['mixgen_ratio'], # hyper parameter 확률 0 ~ 1값 
+                                        mixgen       = config['mixgen']
+                                        )
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset   
