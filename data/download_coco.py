@@ -76,6 +76,8 @@ if __name__ == "__main__":
         # move file to upper directory
         os.rename(storage_dir_/"annotations/instances_train2014.json", storage_dir_/"instances_train2014.json")
         os.rename(storage_dir_/"annotations/instances_val2014.json", storage_dir_/"instances_val2014.json")
+        os.rename(storage_dir_/"annotations/captions_train2014.json", storage_dir_/"captions_train2014.json")
+        os.rename(storage_dir_/"annotations/captions_val2014.json", storage_dir_/"captions_val2014.json")
         os.remove(storage_dir_/"annotations_trainval2014.zip")
         #remove the json file in the storage_dir
         print("Done unzipping annotations to {}".format(str(storage_dir_)))

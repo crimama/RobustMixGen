@@ -18,23 +18,22 @@ def create_romixgen(config):
                                         ])
     
     config             = yaml.load(open('./configs/Retrieval_coco.yaml'),Loader=yaml.Loader)
-    image_caption      = json.load(open(config['train_file'][0]))
-    image_aug          = json.load(open(config['image_aug_file']))
-    obj_bg_df          = pd.DataFrame.from_dict(json.load(open(config['obj_bg_df_file'])), orient='index',columns=['obj_bg'])
+    image_dict         = json.load(open(config['image_dict_file']))
+    obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
     if config['mixgen']: #추후 config['mixgen_img] =='romixgen_img' 형태로 변경 
-        img_func = RoMixGen_Img(image_aug           = image_aug,
+        img_func = RoMixGen_Img(image_aug           = image_dict,
                                 image_root          = config['aug_image_root'],
                                 transform_after_mix = transform_after_mix,
                                 resize_ratio = config['mixgen_resize_ratio'])
     
-        txt_func = RoMixGen_Txt(image_caption       = image_caption)
+        txt_func = RoMixGen_Txt(image_caption       = image_dict)
          
-    romixgen = MiX(image_aug         = image_aug,
-               obj_bg_df         = obj_bg_df,
-               img_aug_function  = img_func,
-               txt_aug_function  = txt_func,
-               normal_image_root = config['image_root'],
-               normal_transform  = transform_after_mix)
+    romixgen = MiX( image_dict        = image_dict,
+                    obj_bg_dict       = obj_bg_dict,
+                    img_aug_function  = img_func,
+                    txt_aug_function  = txt_func,
+                    normal_image_root = config['image_root'],
+                    normal_transform  = transform_after_mix)
     
     return romixgen

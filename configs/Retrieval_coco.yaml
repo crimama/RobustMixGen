@@ -4,8 +4,8 @@ test_file: 'data/COCO/Annotations/coco_test.json'
 image_root: 'data/COCO/Images'
 
 # json file for data augmentation 
-image_aug_file: 'data/COCO/Annotations/romixgen_image_aug.json' # aug json 
-obj_bg_df_file:    'data/COCO/Annotations/romixgen_obj_bg_df.json'
+image_dict_file: 'data/COCO/Annotations/coco_img_info_0.01_bbox_center_0.7.json' # aug json 
+obj_bg_dict_file: 'data/COCO/Annotations/coco_objbg_info_0.01_bbox_center_0.7.json'
 aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root 
 
 
