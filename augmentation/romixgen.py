@@ -1,28 +1,21 @@
-import pycocotools as COCO
 import os
 import math
 import numpy as np
-import pandas as pd 
 from PIL import Image 
 import cv2 
-import yaml 
-import json 
 from dataset.utils import pre_caption
-import json
-from pycocotools.coco import COCO
 import os
-import pandas as pd
 from transformers import MarianMTModel, MarianTokenizer
-import yaml 
+import random 
 
 class MiX:
-    def __init__(self,image_aug,obj_bg_df,img_aug_function,txt_aug_function, 
-                normal_image_root,normal_transform):
+    def __init__(self, image_dict, obj_bg_dict, img_aug_function, txt_aug_function, 
+                normal_image_root, normal_transform):
         self.img_aug = img_aug_function
         self.txt_aug = txt_aug_function 
 
-        self.image_aug = image_aug 
-        self.obj_bg_df = obj_bg_df
+        self.image_dict = image_dict 
+        self.obj_bg_dict = obj_bg_dict
 
         self.normal_transform = normal_transform 
         self.normal_image_root = normal_image_root 
@@ -42,14 +35,14 @@ class MiX:
     def __call__(self,ann): # ann  = image_caption[index] 
         image_id = ann['image_id'].split('_')[-1]
         try:
-            if self.image_aug[image_id]['obj_bg'] =='obj':
+            if self.image_dict[image_id]['obj_bg'] =='obj':
                 obj_id = image_id 
-                bg_id = self.obj_bg_df[self.obj_bg_df['obj_bg']=='bg'].sample(1).index[0]
+                bg_id = random.choice(self.obj_bg_dict["bg"])
                 img,caption = self.mix(obj_id,bg_id) 
                 
-            elif self.image_aug[image_id]['obj_bg'] == 'bg':
+            elif self.image_dict[image_id]['obj_bg'] == 'bg':
                 bg_id = image_id 
-                obj_id = self.obj_bg_df[self.obj_bg_df['obj_bg']=='obj'].sample(1).index[0]
+                obj_id = random.choice(self.obj_bg_dict["obj"])
                 img,caption = self.mix(obj_id,bg_id)      
                       
             else:
@@ -62,9 +55,9 @@ class MiX:
             
 
 class RoMixGen_Img:
-    def __init__(self,image_aug,image_root,transform_after_mix,resize_ratio=1):
+    def __init__(self,image_dict,image_root,transform_after_mix,resize_ratio=1):
         # dataset json  
-        self.image_aug = image_aug 
+        self.image_dict = image_dict 
         
         # Image 
         self.image_root = image_root                   # preprocessed image for augmentation root 
@@ -151,8 +144,8 @@ class RoMixGen_Img:
         return bg_img 
         
     def __call__(self,obj_id,bg_id):
-        self.obj_inform = self.image_aug[obj_id] # 이미지 전처리 정보 중 해당 obj id 정보 가져 옴 
-        self.bg_inform  = self.image_aug[bg_id]  # 이미지 전처리 정보 중 해당 bg id 정보 가져 옴 
+        self.obj_inform = self.image_dict[obj_id] # 이미지 전처리 정보 중 해당 obj id 정보 가져 옴 
+        self.bg_inform  = self.image_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg id 정보 가져 옴 
         
         # image open 
         obj_img = Image.open(os.path.join(self.image_root,'obj',self.obj_inform['file_name'])).convert('RGB')
@@ -167,14 +160,13 @@ class RoMixGen_Img:
         return img 
     
 class RoMixGen_Txt:
-    def __init__(self,image_caption,dataset = 'coco',first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
+    def __init__(self, image_caption, first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
         self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
         self.first_model            = MarianMTModel.from_pretrained(first_model_name)
         self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
         self.second_model           = MarianMTModel.from_pretrained(second_model_name)
-        
-        self.dataset_name           = dataset 
-        self.image_caption     = pd.DataFrame(image_caption)
+
+        self.image_caption          = image_caption
         
     def back_translate(self,text):
         first_formed_text           = f">>fr<< {text}"
@@ -186,11 +178,11 @@ class RoMixGen_Txt:
         return second_translated_text
     
     def __call__(self,obj_id,bg_id):
-        obj_id = self.dataset_name + '_' + obj_id
-        bg_id = self.dataset_name  + '_' + bg_id 
         
-        obj_caption = self.image_caption[self.image_caption['image_id'] == obj_id]['caption'].iloc[0]
-        bg_caption = self.image_caption[self.image_caption['image_id'] == bg_id]['caption'].iloc[0]
+        #obj_caption = self.image_caption[obj_id]["max_obj_cat"][0] #x plural
+        #bg_cat = self.image_caption[bg_id]["max_obj_cat"]
+        obj_caption = random.choice(self.image_caption[obj_id]["captions"])
+        bg_caption = random.choice(self.image_caption[bg_id]["captions"])
         
         obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
         bg_tok = self.first_model_tokenizer.encode(bg_caption)   # caption to token 
