@@ -161,23 +161,23 @@ class RoMixGen_Img:
     
 class RoMixGen_Txt:
     def __init__(self, image_caption, first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
-        self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
-        self.first_model            = MarianMTModel.from_pretrained(first_model_name)
-        self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
-        self.second_model           = MarianMTModel.from_pretrained(second_model_name)
+        # self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
+        # self.first_model            = MarianMTModel.from_pretrained(first_model_name)
+        # self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
+        # self.second_model           = MarianMTModel.from_pretrained(second_model_name)
 
         self.image_caption          = image_caption
         
-    def back_translate(self,text):
-        first_formed_text           = f">>fr<< {text}"
-        first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
-        first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
-        second_formed_text          = f">>en<< {first_translated_text}"
-        second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
-        second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
-        return second_translated_text
+    # def back_translate(self,text):
+    #     first_formed_text           = f">>fr<< {text}"
+    #     first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
+    #     first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
+    #     second_formed_text          = f">>en<< {first_translated_text}"
+    #     second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
+    #     second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
+    #     return second_translated_text
     
-    def replace_word(captions, bg_cat, obj_cats):
+    def replace_word(self,captions, bg_cat, obj_cats):
         replaced = False
         for bg_cats, obj_cats in zip(bg_cat, obj_cats):
             if bg_cats in captions:
@@ -201,9 +201,28 @@ class RoMixGen_Txt:
         
         concat_token = obj_tok[:2] + bg_tok[2:] # concat two caption naively 
         concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption """
-        backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
+        #! backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
         #backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
         
-        return backtranslated_text # return all 5 captions, 
-        
+        #return backtranslated_text # return all 5 captions, 
+        return new_caption
                     
+                    
+class BackTranslation:
+    def __init__(self,device,first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
+        self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
+        self.first_model            = MarianMTModel.from_pretrained(first_model_name).to(device)
+        self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
+        self.second_model           = MarianMTModel.from_pretrained(second_model_name).to(device)
+        self.device = device
+        
+    def __call__(self,text):
+        first_formed_text           = [f">>fr<< {text}" for text in list(text)]
+        first_token                 = self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True).to(self.device)
+        first_translated            = self.first_model.generate(**first_token)
+        first_translated_text       = self.first_model_tokenizer.batch_decode(first_translated, skip_special_tokens=True)
+        second_formed_text          = [f">>en<< {text}" for text in list(first_translated_text)]
+        second_token                = self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True).to(self.device)
+        second_translated           = self.second_model.generate(**second_token)
+        second_translated_text      = self.second_model_tokenizer.batch_decode(second_translated, skip_special_tokens=True)
+        return second_translated_text                
