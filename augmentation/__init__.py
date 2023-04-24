@@ -21,13 +21,13 @@ def create_romixgen(config):
     image_dict         = json.load(open(config['image_dict_file']))
     obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
-    if config['mixgen']: #추후 config['mixgen_img] =='romixgen_img' 형태로 변경 
-        img_func = RoMixGen_Img(image_aug           = image_dict,
-                                image_root          = config['aug_image_root'],
-                                transform_after_mix = transform_after_mix,
-                                resize_ratio = config['mixgen_resize_ratio'])
     
-        txt_func = RoMixGen_Txt(image_caption       = image_dict)
+    img_func = RoMixGen_Img(image_dict           = image_dict,
+                            image_root          = config['aug_image_root'],
+                            transform_after_mix = transform_after_mix,
+                            resize_ratio = config['mixgen_resize_ratio'])
+
+    txt_func = RoMixGen_Txt(image_caption       = image_dict)
          
     romixgen = MiX( image_dict        = image_dict,
                     obj_bg_dict       = obj_bg_dict,
