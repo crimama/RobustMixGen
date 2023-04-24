@@ -138,3 +138,5 @@ data/temp
 cocoapi/
 ._.DS_Store
 .DS_Store
+.tar
+*.tar 

@@ -177,21 +177,33 @@ class RoMixGen_Txt:
         second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
         return second_translated_text
     
+    def replace_word(captions, bg_cat, obj_cats):
+        replaced = False
+        for bg_cats, obj_cats in zip(bg_cat, obj_cats):
+            if bg_cats in captions:
+                captions = captions.replace(bg_cats, obj_cats)
+                replaced = True
+        if not replaced:
+            captions = random.choice(obj_cats) + " " + captions
+        return captions
+
     def __call__(self,obj_id,bg_id):
         
-        #obj_caption = self.image_caption[obj_id]["max_obj_cat"][0] #x plural
-        #bg_cat = self.image_caption[bg_id]["max_obj_cat"]
-        obj_caption = random.choice(self.image_caption[obj_id]["captions"])
+        obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
+        bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
+        #obj_caption = random.choice(self.image_caption[obj_id]["captions"])
         bg_caption = random.choice(self.image_caption[bg_id]["captions"])
+
+        new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
-        obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
+        """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
         bg_tok = self.first_model_tokenizer.encode(bg_caption)   # caption to token 
         
         concat_token = obj_tok[:2] + bg_tok[2:] # concat two caption naively 
-        concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption 
+        concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption """
+        backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
+        #backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
         
-        backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
-        
-        return backtranslated_text 
+        return backtranslated_text # return all 5 captions, 
         
                     
