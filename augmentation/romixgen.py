@@ -183,27 +183,27 @@ class RoMixGen_Txt:
         self.translated_text_cache[text] = second_translated_text
         return second_translated_text
 
-    def replace_and_translate(self, captions, bg_cats, obj_cats):
-        replaced_captions = []
-        for caption in captions:
-            replaced = False
-            for bg_cat, obj_cat in zip(bg_cats, obj_cats):
-                if bg_cat in caption:
-                    caption = caption.replace(bg_cat, obj_cat)
-                    replaced = True
-            if not replaced:
-                caption = random.choice(obj_cats) + " " + caption
+    def replace_word(self, captions, bg_cats, obj_cats):
+        replaced = False
+        for bg_cat, obj_cat in zip(bg_cats, obj_cats):
+            if bg_cat in captions:
+                captions = captions.replace(bg_cat, obj_cat)
+                replaced = True
+        if not replaced:
+            captions = random.choice(obj_cats) + " " + captions
+        return captions
 
-            backtranslated_text = self.back_translate(caption)
-            replaced_captions.append(backtranslated_text)
-        return replaced_captions
-
-    def __call__(self, obj_id, bg_id):
+    def __call__(self,obj_id,bg_id):
+        
         obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
         bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
-        bg_caption = self.image_caption[bg_id]["captions"]
-        new_captions = self.replace_and_translate(bg_caption, [bg_cat]*len(bg_caption), [obj_cat]*len(bg_caption))
-        return new_captions
 
+        bg_caption = self.image_caption[bg_id]["captions"]
+
+        new_caption = [self.replace_word(bg_caption_item, bg_cat, obj_cat) for bg_caption_item in bg_caption]
+        backtranslated_text = [self.back_translate(new_caption_item) for new_caption_item in new_caption]
+        #backtranslated_text = self.back_translate(new_caption) 
+        
+        return backtranslated_text # return all 5 captions, 
         
                     
