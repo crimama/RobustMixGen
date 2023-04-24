@@ -334,19 +334,20 @@ def main(args, config):
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")   
-                    
-                if val_result['r_mean']>best:
-                    save_obj = {
+                
+                save_obj = {
                         'model': model_without_ddp.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'lr_scheduler': lr_scheduler.state_dict(),
                         'config': config,
                         'epoch': epoch,
                     }
+                if val_result['r_mean']>best:
                     torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
                     best = val_result['r_mean']    
                     best_epoch = epoch
-                    
+            torch.save(save_obj,os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
+            
         if args.evaluate: 
             break
         
