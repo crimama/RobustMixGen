@@ -1,0 +1,5 @@
+docker run --gpus all -it \
+-p 1111:1111 \
+-v /home/hunim/Volume:/Volume \
+--name romixgen \
+hun/romixgen:basic \
