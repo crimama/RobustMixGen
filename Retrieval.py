@@ -24,8 +24,10 @@ from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 
+from augmentation.romixgen import BackTranslation
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
+
+def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
     # train
     model.train()  
     
@@ -39,6 +41,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        text = backtrans(text)
+        
         # !if config['mixgen']:
         # !        image, text = mg.mixgen(image, text, num=16)
         image = image.to(device,non_blocking=True)   
@@ -253,7 +257,8 @@ def main(args, config):
                                                           collate_fns=[None,None,None])   
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-
+    backtrans = BackTranslation(device)
+    
     #### Model #### 
     print("Creating model")
     model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer)
@@ -302,7 +307,7 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
+            train_stats = train(model, train_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
             
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
