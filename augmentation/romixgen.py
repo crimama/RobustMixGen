@@ -3,10 +3,11 @@ import math
 import numpy as np
 from PIL import Image 
 import cv2 
-from dataset.utils import pre_caption
+#from dataset.utils import pre_caption
 import os
 from transformers import MarianMTModel, MarianTokenizer
 import random 
+import torch
 
 class MiX:
     def __init__(self, image_dict, obj_bg_dict, img_aug_function, txt_aug_function, 
@@ -162,10 +163,11 @@ class RoMixGen_Img:
     
 class RoMixGen_Txt:
     def __init__(self, image_caption, first_model_name='Helsinki-NLP/opus-mt-en-fr', second_model_name='Helsinki-NLP/opus-mt-fr-en'):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
-        self.first_model            = MarianMTModel.from_pretrained(first_model_name)
+        self.first_model            = MarianMTModel.from_pretrained(first_model_name).to(self.device)
         self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
-        self.second_model           = MarianMTModel.from_pretrained(second_model_name)
+        self.second_model           = MarianMTModel.from_pretrained(second_model_name).to(self.device)
         self.image_caption          = image_caption
         self.translated_text_cache  = {}
 
@@ -174,10 +176,14 @@ class RoMixGen_Txt:
             return self.translated_text_cache[text]
 
         first_formed_text        = f">>fr<< {text}"
-        first_translated         = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
+        first_tokenized          = self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True)
+        first_tokenized          = {k: v.to(self.device) for k, v in first_tokenized.items()}
+        first_translated         = self.first_model.generate(**first_tokenized)
         first_translated_text    = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
         second_formed_text       = f">>en<< {first_translated_text}"
-        second_translated        = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
+        second_tokenized         = self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True)
+        second_tokenized         = {k: v.to(self.device) for k, v in second_tokenized.items()}
+        second_translated        = self.second_model.generate(**second_tokenized)
         second_translated_text   = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
         
         self.translated_text_cache[text] = second_translated_text
@@ -204,6 +210,5 @@ class RoMixGen_Txt:
         backtranslated_text = [self.back_translate(new_caption_item) for new_caption_item in new_caption]
         #backtranslated_text = self.back_translate(new_caption) 
         
-        return backtranslated_text # return all 5 captions, 
-        
+        return backtranslated_text # return all 5 captions
                     

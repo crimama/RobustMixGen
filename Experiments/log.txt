@@ -1,0 +1,815 @@
+Images 100:
+Average original score: 30.1465
+Average pre_mixgen score: 27.9086
+Average pre_romixgen score: 26.3408
+
+Images 200:
+Average original score: 30.3373
+Average pre_mixgen score: 27.0348
+Average pre_romixgen score: 26.4492
+
+Images 300:
+Average original score: 30.7167
+Average pre_mixgen score: 27.1041
+Average pre_romixgen score: 26.5070
+
+Images 400:
+Average original score: 30.6433
+Average pre_mixgen score: 27.3956
+Average pre_romixgen score: 26.7517
+
+Images 500:
+Average original score: 30.7654
+Average pre_mixgen score: 27.4440
+Average pre_romixgen score: 26.9166
+
+Images 600:
+Average original score: 30.9070
+Average pre_mixgen score: 27.5695
+Average pre_romixgen score: 27.0079
+
+Images 700:
+Average original score: 30.8291
+Average pre_mixgen score: 27.7041
+Average pre_romixgen score: 26.8658
+
+Images 800:
+Average original score: 30.9087
+Average pre_mixgen score: 27.7739
+Average pre_romixgen score: 26.9932
+
+Images 900:
+Average original score: 30.8854
+Average pre_mixgen score: 27.8676
+Average pre_romixgen score: 27.0164
+
+Images 1000:
+Average original score: 30.9624
+Average pre_mixgen score: 27.9774
+Average pre_romixgen score: 26.9510
+
+Images 1100:
+Average original score: 30.9571
+Average pre_mixgen score: 28.0178
+Average pre_romixgen score: 27.0528
+
+Images 1200:
+Average original score: 30.8555
+Average pre_mixgen score: 28.0020
+Average pre_romixgen score: 26.9957
+
+Images 1300:
+Average original score: 30.7313
+Average pre_mixgen score: 27.9899
+Average pre_romixgen score: 26.9933
+
+Images 1400:
+Average original score: 30.7546
+Average pre_mixgen score: 27.9913
+Average pre_romixgen score: 27.0180
+
+Images 1500:
+Average original score: 30.7803
+Average pre_mixgen score: 28.0018
+Average pre_romixgen score: 26.9699
+
+Images 1600:
+Average original score: 30.7614
+Average pre_mixgen score: 27.9601
+Average pre_romixgen score: 26.9350
+
+Images 1700:
+Average original score: 30.6535
+Average pre_mixgen score: 27.9159
+Average pre_romixgen score: 27.0154
+
+Images 1800:
+Average original score: 30.5776
+Average pre_mixgen score: 27.8515
+Average pre_romixgen score: 26.9862
+
+Images 1900:
+Average original score: 30.5221
+Average pre_mixgen score: 27.8386
+Average pre_romixgen score: 27.0060
+
+Images 2000:
+Average original score: 30.5872
+Average pre_mixgen score: 27.7811
+Average pre_romixgen score: 26.9619
+
+Images 2100:
+Average original score: 30.5811
+Average pre_mixgen score: 27.8118
+Average pre_romixgen score: 27.0242
+
+Images 2200:
+Average original score: 30.6587
+Average pre_mixgen score: 27.8587
+Average pre_romixgen score: 27.0773
+
+Images 2300:
+Average original score: 30.7347
+Average pre_mixgen score: 27.8873
+Average pre_romixgen score: 27.0371
+
+Images 2400:
+Average original score: 30.7138
+Average pre_mixgen score: 27.8697
+Average pre_romixgen score: 27.0003
+
+Images 2500:
+Average original score: 30.7254
+Average pre_mixgen score: 27.9084
+Average pre_romixgen score: 27.0203
+
+Images 2600:
+Average original score: 30.7272
+Average pre_mixgen score: 27.9402
+Average pre_romixgen score: 27.0319
+
+Images 2700:
+Average original score: 30.7081
+Average pre_mixgen score: 27.9764
+Average pre_romixgen score: 27.0298
+
+Images 2800:
+Average original score: 30.6764
+Average pre_mixgen score: 28.0124
+Average pre_romixgen score: 27.0461
+
+Images 2900:
+Average original score: 30.6847
+Average pre_mixgen score: 28.0133
+Average pre_romixgen score: 27.0464
+
+Images 3000:
+Average original score: 30.6666
+Average pre_mixgen score: 28.0312
+Average pre_romixgen score: 27.0621
+
+Images 3100:
+Average original score: 30.7129
+Average pre_mixgen score: 28.0066
+Average pre_romixgen score: 27.0713
+
+Images 3200:
+Average original score: 30.7198
+Average pre_mixgen score: 27.9980
+Average pre_romixgen score: 27.0841
+
+Images 3300:
+Average original score: 30.7056
+Average pre_mixgen score: 28.0431
+Average pre_romixgen score: 27.0762
+
+Images 3400:
+Average original score: 30.7060
+Average pre_mixgen score: 28.0266
+Average pre_romixgen score: 27.0907
+
+Images 3500:
+Average original score: 30.6664
+Average pre_mixgen score: 28.0265
+Average pre_romixgen score: 27.1124
+
+Images 3600:
+Average original score: 30.6773
+Average pre_mixgen score: 28.0356
+Average pre_romixgen score: 27.0845
+
+Images 3700:
+Average original score: 30.6858
+Average pre_mixgen score: 28.0713
+Average pre_romixgen score: 27.0558
+
+Images 3800:
+Average original score: 30.6867
+Average pre_mixgen score: 28.0719
+Average pre_romixgen score: 27.0452
+
+Images 3900:
+Average original score: 30.6547
+Average pre_mixgen score: 28.1011
+Average pre_romixgen score: 27.0353
+
+Images 4000:
+Average original score: 30.6437
+Average pre_mixgen score: 28.1461
+Average pre_romixgen score: 27.0047
+
+Images 4100:
+Average original score: 30.6599
+Average pre_mixgen score: 28.1235
+Average pre_romixgen score: 27.0030
+
+Images 4200:
+Average original score: 30.6736
+Average pre_mixgen score: 28.1147
+Average pre_romixgen score: 26.9981
+
+Images 4300:
+Average original score: 30.6788
+Average pre_mixgen score: 28.1029
+Average pre_romixgen score: 26.9935
+
+Images 4400:
+Average original score: 30.6724
+Average pre_mixgen score: 28.0888
+Average pre_romixgen score: 26.9983
+
+Images 4500:
+Average original score: 30.6487
+Average pre_mixgen score: 28.1076
+Average pre_romixgen score: 27.0042
+
+Images 4600:
+Average original score: 30.6416
+Average pre_mixgen score: 28.1429
+Average pre_romixgen score: 26.9960
+
+Images 4700:
+Average original score: 30.6351
+Average pre_mixgen score: 28.1390
+Average pre_romixgen score: 26.9884
+
+Images 4800:
+Average original score: 30.5993
+Average pre_mixgen score: 28.1411
+Average pre_romixgen score: 27.0006
+
+Images 4900:
+Average original score: 30.6083
+Average pre_mixgen score: 28.1459
+Average pre_romixgen score: 27.0031
+
+Images 5000:
+Average original score: 30.5716
+Average pre_mixgen score: 28.1539
+Average pre_romixgen score: 26.9958
+
+Images 5100:
+Average original score: 30.5373
+Average pre_mixgen score: 28.1353
+Average pre_romixgen score: 26.9914
+
+Images 5200:
+Average original score: 30.5330
+Average pre_mixgen score: 28.1095
+Average pre_romixgen score: 26.9805
+
+Images 5300:
+Average original score: 30.5546
+Average pre_mixgen score: 28.0979
+Average pre_romixgen score: 26.9513
+
+Images 5400:
+Average original score: 30.5558
+Average pre_mixgen score: 28.0975
+Average pre_romixgen score: 26.9405
+
+Images 5500:
+Average original score: 30.5526
+Average pre_mixgen score: 28.0779
+Average pre_romixgen score: 26.9395
+
+Images 5600:
+Average original score: 30.5678
+Average pre_mixgen score: 28.0697
+Average pre_romixgen score: 26.9468
+
+Images 5700:
+Average original score: 30.5803
+Average pre_mixgen score: 28.0963
+Average pre_romixgen score: 26.9414
+
+Images 5800:
+Average original score: 30.5646
+Average pre_mixgen score: 28.1067
+Average pre_romixgen score: 26.9415
+
+Images 5900:
+Average original score: 30.5212
+Average pre_mixgen score: 28.1238
+Average pre_romixgen score: 26.9307
+
+Images 6000:
+Average original score: 30.5074
+Average pre_mixgen score: 28.1550
+Average pre_romixgen score: 26.9291
+
+Images 6100:
+Average original score: 30.5119
+Average pre_mixgen score: 28.1494
+Average pre_romixgen score: 26.9386
+
+Images 6200:
+Average original score: 30.5239
+Average pre_mixgen score: 28.1648
+Average pre_romixgen score: 26.9308
+
+Images 6300:
+Average original score: 30.5121
+Average pre_mixgen score: 28.1527
+Average pre_romixgen score: 26.9370
+
+Images 6400:
+Average original score: 30.5114
+Average pre_mixgen score: 28.1304
+Average pre_romixgen score: 26.9378
+
+Images 6500:
+Average original score: 30.5031
+Average pre_mixgen score: 28.1219
+Average pre_romixgen score: 26.9286
+
+Images 6600:
+Average original score: 30.4701
+Average pre_mixgen score: 28.1288
+Average pre_romixgen score: 26.9323
+
+Images 6700:
+Average original score: 30.4597
+Average pre_mixgen score: 28.1261
+Average pre_romixgen score: 26.9406
+
+Images 6800:
+Average original score: 30.4631
+Average pre_mixgen score: 28.1283
+Average pre_romixgen score: 26.9522
+
+Images 6900:
+Average original score: 30.4790
+Average pre_mixgen score: 28.1293
+Average pre_romixgen score: 26.9510
+
+Images 7000:
+Average original score: 30.4849
+Average pre_mixgen score: 28.1217
+Average pre_romixgen score: 26.9643
+
+Images 7100:
+Average original score: 30.4718
+Average pre_mixgen score: 28.1059
+Average pre_romixgen score: 26.9714
+
+Images 7200:
+Average original score: 30.4728
+Average pre_mixgen score: 28.0933
+Average pre_romixgen score: 26.9663
+
+Images 7300:
+Average original score: 30.4816
+Average pre_mixgen score: 28.0990
+Average pre_romixgen score: 26.9739
+
+Images 7400:
+Average original score: 30.4884
+Average pre_mixgen score: 28.0718
+Average pre_romixgen score: 26.9633
+
+Images 7500:
+Average original score: 30.4926
+Average pre_mixgen score: 28.0777
+Average pre_romixgen score: 26.9812
+
+Images 7600:
+Average original score: 30.4925
+Average pre_mixgen score: 28.0714
+Average pre_romixgen score: 26.9831
+
+Images 7700:
+Average original score: 30.5067
+Average pre_mixgen score: 28.0916
+Average pre_romixgen score: 26.9888
+
+Images 7800:
+Average original score: 30.5239
+Average pre_mixgen score: 28.0915
+Average pre_romixgen score: 26.9911
+
+Images 7900:
+Average original score: 30.5254
+Average pre_mixgen score: 28.0763
+Average pre_romixgen score: 26.9951
+
+Images 8000:
+Average original score: 30.5240
+Average pre_mixgen score: 28.0657
+Average pre_romixgen score: 26.9802
+
+Images 8100:
+Average original score: 30.5327
+Average pre_mixgen score: 28.0698
+Average pre_romixgen score: 26.9915
+
+Images 8200:
+Average original score: 30.5468
+Average pre_mixgen score: 28.0617
+Average pre_romixgen score: 26.9832
+
+Images 8300:
+Average original score: 30.5503
+Average pre_mixgen score: 28.0418
+Average pre_romixgen score: 26.9835
+
+Images 8400:
+Average original score: 30.5518
+Average pre_mixgen score: 28.0405
+Average pre_romixgen score: 26.9846
+
+Images 8500:
+Average original score: 30.5400
+Average pre_mixgen score: 28.0357
+Average pre_romixgen score: 26.9871
+
+Images 8600:
+Average original score: 30.5374
+Average pre_mixgen score: 28.0557
+Average pre_romixgen score: 26.9889
+
+Images 8700:
+Average original score: 30.5443
+Average pre_mixgen score: 28.0516
+Average pre_romixgen score: 26.9945
+
+Images 8800:
+Average original score: 30.5399
+Average pre_mixgen score: 28.0571
+Average pre_romixgen score: 26.9859
+
+Images 8900:
+Average original score: 30.5314
+Average pre_mixgen score: 28.0713
+Average pre_romixgen score: 26.9929
+
+Images 9000:
+Average original score: 30.5227
+Average pre_mixgen score: 28.0638
+Average pre_romixgen score: 26.9905
+
+Images 9100:
+Average original score: 30.5239
+Average pre_mixgen score: 28.0622
+Average pre_romixgen score: 26.9941
+
+Images 9200:
+Average original score: 30.5206
+Average pre_mixgen score: 28.0551
+Average pre_romixgen score: 26.9889
+
+Images 9300:
+Average original score: 30.5186
+Average pre_mixgen score: 28.0460
+Average pre_romixgen score: 26.9863
+
+Images 9400:
+Average original score: 30.5316
+Average pre_mixgen score: 28.0598
+Average pre_romixgen score: 26.9838
+
+Images 9500:
+Average original score: 30.5274
+Average pre_mixgen score: 28.0534
+Average pre_romixgen score: 26.9894
+
+Images 9600:
+Average original score: 30.5327
+Average pre_mixgen score: 28.0509
+Average pre_romixgen score: 26.9906
+
+Images 9700:
+Average original score: 30.5261
+Average pre_mixgen score: 28.0556
+Average pre_romixgen score: 26.9903
+
+Images 9800:
+Average original score: 30.5233
+Average pre_mixgen score: 28.0576
+Average pre_romixgen score: 26.9919
+
+Images 9900:
+Average original score: 30.5203
+Average pre_mixgen score: 28.0525
+Average pre_romixgen score: 27.0012
+
+Images 10000:
+Average original score: 30.5177
+Average pre_mixgen score: 28.0519
+Average pre_romixgen score: 27.0075
+
+Images 10100:
+Average original score: 30.5013
+Average pre_mixgen score: 28.0430
+Average pre_romixgen score: 27.0150
+
+Images 10200:
+Average original score: 30.4908
+Average pre_mixgen score: 28.0315
+Average pre_romixgen score: 27.0078
+
+Images 10300:
+Average original score: 30.4931
+Average pre_mixgen score: 28.0375
+Average pre_romixgen score: 27.0116
+
+Images 10400:
+Average original score: 30.4866
+Average pre_mixgen score: 28.0337
+Average pre_romixgen score: 27.0091
+
+Images 10500:
+Average original score: 30.4832
+Average pre_mixgen score: 28.0263
+Average pre_romixgen score: 27.0163
+
+Images 10600:
+Average original score: 30.4828
+Average pre_mixgen score: 28.0244
+Average pre_romixgen score: 27.0201
+
+Images 10700:
+Average original score: 30.4792
+Average pre_mixgen score: 28.0227
+Average pre_romixgen score: 27.0255
+
+Images 10800:
+Average original score: 30.4792
+Average pre_mixgen score: 28.0327
+Average pre_romixgen score: 27.0301
+
+Images 10900:
+Average original score: 30.4808
+Average pre_mixgen score: 28.0398
+Average pre_romixgen score: 27.0236
+
+Images 11000:
+Average original score: 30.4907
+Average pre_mixgen score: 28.0380
+Average pre_romixgen score: 27.0327
+
+Images 11100:
+Average original score: 30.4952
+Average pre_mixgen score: 28.0487
+Average pre_romixgen score: 27.0433
+
+Images 11200:
+Average original score: 30.5034
+Average pre_mixgen score: 28.0529
+Average pre_romixgen score: 27.0412
+
+Images 11300:
+Average original score: 30.5009
+Average pre_mixgen score: 28.0542
+Average pre_romixgen score: 27.0427
+
+Images 11400:
+Average original score: 30.5035
+Average pre_mixgen score: 28.0514
+Average pre_romixgen score: 27.0477
+
+Images 11500:
+Average original score: 30.4857
+Average pre_mixgen score: 28.0532
+Average pre_romixgen score: 27.0461
+
+Images 11600:
+Average original score: 30.4705
+Average pre_mixgen score: 28.0634
+Average pre_romixgen score: 27.0483
+
+Images 11700:
+Average original score: 30.4497
+Average pre_mixgen score: 28.0675
+Average pre_romixgen score: 27.0495
+
+Images 11800:
+Average original score: 30.4295
+Average pre_mixgen score: 28.0744
+Average pre_romixgen score: 27.0449
+
+Images 11900:
+Average original score: 30.4203
+Average pre_mixgen score: 28.0703
+Average pre_romixgen score: 27.0338
+
+Images 12000:
+Average original score: 30.4267
+Average pre_mixgen score: 28.0706
+Average pre_romixgen score: 27.0375
+
+Images 12100:
+Average original score: 30.4319
+Average pre_mixgen score: 28.0757
+Average pre_romixgen score: 27.0304
+
+Images 12200:
+Average original score: 30.4320
+Average pre_mixgen score: 28.0852
+Average pre_romixgen score: 27.0311
+
+Images 12300:
+Average original score: 30.4379
+Average pre_mixgen score: 28.0802
+Average pre_romixgen score: 27.0292
+
+Images 12400:
+Average original score: 30.4475
+Average pre_mixgen score: 28.0819
+Average pre_romixgen score: 27.0345
+
+Images 12500:
+Average original score: 30.4525
+Average pre_mixgen score: 28.0856
+Average pre_romixgen score: 27.0386
+
+Images 12600:
+Average original score: 30.4595
+Average pre_mixgen score: 28.0786
+Average pre_romixgen score: 27.0379
+
+Images 12700:
+Average original score: 30.4639
+Average pre_mixgen score: 28.0829
+Average pre_romixgen score: 27.0381
+
+Images 12800:
+Average original score: 30.4596
+Average pre_mixgen score: 28.0844
+Average pre_romixgen score: 27.0275
+
+Images 12900:
+Average original score: 30.4668
+Average pre_mixgen score: 28.0814
+Average pre_romixgen score: 27.0300
+
+Images 13000:
+Average original score: 30.4619
+Average pre_mixgen score: 28.0781
+Average pre_romixgen score: 27.0316
+
+Images 13100:
+Average original score: 30.4722
+Average pre_mixgen score: 28.0792
+Average pre_romixgen score: 27.0377
+
+Images 13200:
+Average original score: 30.4699
+Average pre_mixgen score: 28.0818
+Average pre_romixgen score: 27.0368
+
+Images 13300:
+Average original score: 30.4790
+Average pre_mixgen score: 28.0788
+Average pre_romixgen score: 27.0349
+
+Images 13400:
+Average original score: 30.4799
+Average pre_mixgen score: 28.0770
+Average pre_romixgen score: 27.0384
+
+Images 13500:
+Average original score: 30.4868
+Average pre_mixgen score: 28.0749
+Average pre_romixgen score: 27.0423
+
+Images 13600:
+Average original score: 30.4828
+Average pre_mixgen score: 28.0764
+Average pre_romixgen score: 27.0434
+
+Images 13700:
+Average original score: 30.4800
+Average pre_mixgen score: 28.0748
+Average pre_romixgen score: 27.0414
+
+Images 13800:
+Average original score: 30.4750
+Average pre_mixgen score: 28.0771
+Average pre_romixgen score: 27.0371
+
+Images 13900:
+Average original score: 30.4785
+Average pre_mixgen score: 28.0855
+Average pre_romixgen score: 27.0353
+
+Images 14000:
+Average original score: 30.4803
+Average pre_mixgen score: 28.0789
+Average pre_romixgen score: 27.0357
+
+Images 14100:
+Average original score: 30.4806
+Average pre_mixgen score: 28.0650
+Average pre_romixgen score: 27.0370
+
+Images 14200:
+Average original score: 30.4780
+Average pre_mixgen score: 28.0600
+Average pre_romixgen score: 27.0426
+
+Images 14300:
+Average original score: 30.4839
+Average pre_mixgen score: 28.0599
+Average pre_romixgen score: 27.0376
+
+Images 14400:
+Average original score: 30.4858
+Average pre_mixgen score: 28.0600
+Average pre_romixgen score: 27.0362
+
+Images 14500:
+Average original score: 30.4908
+Average pre_mixgen score: 28.0719
+Average pre_romixgen score: 27.0414
+
+Images 14600:
+Average original score: 30.4894
+Average pre_mixgen score: 28.0793
+Average pre_romixgen score: 27.0430
+
+Images 14700:
+Average original score: 30.5037
+Average pre_mixgen score: 28.0748
+Average pre_romixgen score: 27.0461
+
+Images 14800:
+Average original score: 30.4982
+Average pre_mixgen score: 28.0674
+Average pre_romixgen score: 27.0470
+
+Images 14900:
+Average original score: 30.4943
+Average pre_mixgen score: 28.0642
+Average pre_romixgen score: 27.0476
+
+Images 15000:
+Average original score: 30.4984
+Average pre_mixgen score: 28.0711
+Average pre_romixgen score: 27.0427
+
+Images 15100:
+Average original score: 30.5021
+Average pre_mixgen score: 28.0631
+Average pre_romixgen score: 27.0474
+
+Images 15200:
+Average original score: 30.4954
+Average pre_mixgen score: 28.0568
+Average pre_romixgen score: 27.0441
+
+Images 15300:
+Average original score: 30.4976
+Average pre_mixgen score: 28.0503
+Average pre_romixgen score: 27.0415
+
+Images 15400:
+Average original score: 30.5017
+Average pre_mixgen score: 28.0492
+Average pre_romixgen score: 27.0439
+
+Images 15500:
+Average original score: 30.5036
+Average pre_mixgen score: 28.0512
+Average pre_romixgen score: 27.0492
+
+Images 15600:
+Average original score: 30.5019
+Average pre_mixgen score: 28.0485
+Average pre_romixgen score: 27.0521
+
+Images 15700:
+Average original score: 30.4992
+Average pre_mixgen score: 28.0507
+Average pre_romixgen score: 27.0474
+
+Images 15800:
+Average original score: 30.4959
+Average pre_mixgen score: 28.0482
+Average pre_romixgen score: 27.0518
+
+Images 15900:
+Average original score: 30.4933
+Average pre_mixgen score: 28.0572
+Average pre_romixgen score: 27.0511
+
+Images 16000:
+Average original score: 30.4864
+Average pre_mixgen score: 28.0540
+Average pre_romixgen score: 27.0557
+
+Images 16100:
+Average original score: 30.4862
+Average pre_mixgen score: 28.0615
+Average pre_romixgen score: 27.0514
+
+Images 16200:
+Average original score: 30.4904
+Average pre_mixgen score: 28.0610
+Average pre_romixgen score: 27.0553
+
+Images 16300:
+Average original score: 30.4884
+Average pre_mixgen score: 28.0595
+Average pre_romixgen score: 27.0514
+

@@ -1,0 +1,4 @@
+Average original score: 30.4887
+Average pre_mixgen score: 28.0578
+Average pre_romixgen score: 27.0522
+
