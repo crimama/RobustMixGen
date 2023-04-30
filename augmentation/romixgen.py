@@ -3,10 +3,11 @@ import math
 import numpy as np
 from PIL import Image 
 import cv2 
-from dataset.utils import pre_caption
+#from dataset.utils import pre_caption
 import os
 from transformers import MarianMTModel, MarianTokenizer
 import random 
+import torch
 
 class MiX:
     def __init__(self, image_dict, obj_bg_dict, img_aug_function, txt_aug_function, 
@@ -144,8 +145,8 @@ class RoMixGen_Img:
         return bg_img 
         
     def __call__(self,obj_id,bg_id):
-        self.obj_inform = self.image_dict[obj_id] # 이미지 전처리 정보 중 해당 obj id 정보 가져 옴 
-        self.bg_inform  = self.image_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg id 정보 가져 옴 
+        self.obj_inform = self.image_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
+        self.bg_inform  = self.image_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
         
         # image open 
         obj_img = Image.open(os.path.join(self.image_root,'obj',self.obj_inform['file_name'])).convert('RGB')
@@ -156,6 +157,7 @@ class RoMixGen_Img:
         bg_img  = self.__bg_pre__(obj_img,bg_img)
         
         # transforms after mix 
+
         img = self.transform_after_mix(Image.fromarray(bg_img))
         return img 
     
@@ -177,11 +179,11 @@ class RoMixGen_Txt:
     #     second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
     #     return second_translated_text
     
-    def replace_word(self,captions, bg_cat, obj_cats):
+    def replace_word(self,captions, bg_cats, obj_cats):
         replaced = False
-        for bg_cats, obj_cats in zip(bg_cat, obj_cats):
-            if bg_cats in captions:
-                captions = captions.replace(bg_cats, obj_cats)
+        for bg_cat, obj_cat in zip(bg_cats, obj_cats):
+            if bg_cat in captions:
+                captions = captions.replace(bg_cat, obj_cat)
                 replaced = True
         if not replaced:
             captions = random.choice(obj_cats) + " " + captions
@@ -191,9 +193,7 @@ class RoMixGen_Txt:
         
         obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
         bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
-        #obj_caption = random.choice(self.image_caption[obj_id]["captions"])
-        bg_caption = random.choice(self.image_caption[bg_id]["captions"])
-
+        bg_caption = self.image_caption[bg_id]["caption"]
         new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
