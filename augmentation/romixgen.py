@@ -3,7 +3,7 @@ import math
 import numpy as np
 from PIL import Image 
 import cv2 
-#from dataset.utils import pre_caption
+from dataset.utils import pre_caption
 import os
 from transformers import MarianMTModel, MarianTokenizer
 import random 
