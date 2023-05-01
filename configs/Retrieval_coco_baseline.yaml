@@ -12,8 +12,8 @@ aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root
 bert_config: 'configs/config_bert.json'
 
 image_res: 384
-batch_size_train: 2
-batch_size_test: 2
+batch_size_train: 32
+batch_size_test: 64
 
 queue_size: 65536
 momentum: 0.995
@@ -31,8 +31,11 @@ schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-mixgen: False
-mixgen_ratio: 1 
-mixgen_resize_ratio: 2
+romixgen: False
+romixgen_ratio: 1 
+romixgen_resize_ratio: 2
+
+mixgen: False 
+mixgen_num: 16
 
 
