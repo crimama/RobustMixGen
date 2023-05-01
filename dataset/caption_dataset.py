@@ -42,7 +42,7 @@ class re_train_dataset(Dataset):
         
         caption = pre_caption(ann['caption'], self.max_words) 
 
-        return image, caption, self.img_ids[ann['image_id']],ann['image_id']
+        return image, caption, self.img_ids[ann['image_id']],ann['image_id'] 
 '''
 class re_train_dataset(Dataset):
     def __init__(self, ann_file,transform,image_root,romixgen,romixgen_true=True,romixgen_ratio=0.1, max_words=30):        

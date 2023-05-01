@@ -17,7 +17,7 @@ def create_romixgen(config):
                                             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                                         ])
     
-    #config             = yaml.load(open('./configs/Retrieval_coco.yaml'),Loader=yaml.Loader)
+    
     image_dict         = json.load(open(config['image_dict_file']))
     obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
