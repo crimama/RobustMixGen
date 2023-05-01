@@ -24,10 +24,10 @@ from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 
-from augmentation.romixgen import BackTranslation
+
 from augmentation import mixgen as mg 
 
-def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
     # train
     model.train()  
     
@@ -41,7 +41,8 @@ def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_ste
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #image, text = mg.mixgen(image, text, num=1)
+        if config['mixgen']:
+            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
             
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
@@ -262,7 +263,7 @@ def main(args, config):
                                                           collate_fns=[None,None,None])   
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-    backtrans = BackTranslation(device)
+
     
     #### Model #### 
     print("Creating model")
@@ -312,13 +313,13 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
         
-        #score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
-        #score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
+        score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
+        score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
     
         if utils.is_main_process():  
-            '''
+            
             val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
             print(val_result)
             test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
@@ -340,7 +341,7 @@ def main(args, config):
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")   
-            '''   
+            
             save_obj = {
                         'model': model_without_ddp.state_dict(),
                         'optimizer': optimizer.state_dict(),
