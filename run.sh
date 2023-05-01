@@ -2,9 +2,19 @@
 #python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain.py --config ./configs/Pretrain.yaml 
 
 # #! Image Retrieval - coco 
-CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --use_env Retrieval.py \
-    --config ./configs/Retrieval_coco.yaml --output_dir output/Retrieval_coco \
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
+    --config ./configs/Retrieval_coco_default.yaml --output_dir output/Retrieval_coco_test \
     --checkpoint ./output/Pretrain/ALBEF.pth
+
+# CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
+#     --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_0.0001_romix \
+#     --checkpoint ./output/Pretrain/ALBEF.pth
+
+#! Image Retrieval eval - coco 
+#  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
+#      --config ./configs/Retrieval_coco.yaml --output_dir output/Retrieval_coco \
+#      --checkpoint ./output/Retrieval_coco/checkpoint_4.pth --evaluate true 
+
 
 #! VQA 
 # python -m torch.distributed.launch --nproc_per_node=2 --use_env VQA.py \

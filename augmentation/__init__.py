@@ -17,14 +17,14 @@ def create_romixgen(config):
                                             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                                         ])
     
-    config             = yaml.load(open('./configs/Retrieval_coco.yaml'),Loader=yaml.Loader)
+    #config             = yaml.load(open('./configs/Retrieval_coco.yaml'),Loader=yaml.Loader)
     image_dict         = json.load(open(config['image_dict_file']))
     obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
     
     img_func = RoMixGen_Img(image_dict           = image_dict,
-                            image_root          = config['aug_image_root'],
-                            transform_after_mix = transform_after_mix,
+                            image_root           = config['aug_image_root'],
+                            transform_after_mix  = transform_after_mix,
                             resize_ratio = config['mixgen_resize_ratio'])
 
     txt_func = RoMixGen_Txt(image_caption       = image_dict)
