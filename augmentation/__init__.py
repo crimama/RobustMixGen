@@ -18,22 +18,21 @@ def create_romixgen(config):
                                         ])
     
     config             = yaml.load(open('./configs/Retrieval_coco.yaml'),Loader=yaml.Loader)
-    image_dict         = json.load(open(config['image_dict_file']))
-    obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
     
-    img_func = RoMixGen_Img(image_dict           = image_dict,
-                            image_root          = config['aug_image_root'],
+    img_func = RoMixGen_Img(image_root = config['image_root'],
                             transform_after_mix = transform_after_mix,
                             resize_ratio = config['mixgen_resize_ratio'])
 
-    txt_func = RoMixGen_Txt(image_caption       = image_dict)
+    txt_func = RoMixGen_Txt()
          
-    romixgen = MiX( image_dict        = image_dict,
-                    obj_bg_dict       = obj_bg_dict,
-                    img_aug_function  = img_func,
+    romixgen = MiX( img_aug_function  = img_func,
                     txt_aug_function  = txt_func,
                     normal_image_root = config['image_root'],
-                    normal_transform  = transform_after_mix)
+                    normal_transform  = transform_after_mix,
+                    image_info        = config['img_info_json'],
+                    obj_bg_threshold  = config['obj_bg_threshold'],
+                    bg_center_threshold = config['bg_center_threshold'],)
     
     return romixgen
+

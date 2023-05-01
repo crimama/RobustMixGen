@@ -4,10 +4,14 @@ test_file: 'data/COCO/Annotations/coco_test.json'
 image_root: 'data/COCO/Images'
 
 # json file for data augmentation 
-image_dict_file: 'data/COCO/Annotations/coco_img_info_0.01_bbox_center_0.7.json' # aug json 
-obj_bg_dict_file: 'data/COCO/Annotations/coco_objbg_info_0.01_bbox_center_0.7.json'
-aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root 
+#image_dict_file: 'data/COCO/Annotations/coco_img_info_0.01_bbox_center_0.7.json' # aug json 
+#obj_bg_dict_file: 'data/COCO/Annotations/coco_objbg_info_0.01_bbox_center_0.7.json'
+#aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root 
 
+#romixgen set
+obj_bg_threshold : 0.2
+bg_center_threshold : 0.7
+img_info_json : 'data/COCO/Annotations/coco_img_info.json'
 
 bert_config: 'configs/config_bert.json'
 
