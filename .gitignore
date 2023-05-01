@@ -143,3 +143,5 @@ cocoapi/
 *.pth
 .pth 
 output/
+.tar.gz 
+*.tar.gz
