@@ -22,10 +22,10 @@ def create_romixgen(config):
     obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
     
     
-    img_func = RoMixGen_Img(image_dict           = image_dict,
-                            image_root           = config['aug_image_root'],
-                            transform_after_mix  = transform_after_mix,
-                            resize_ratio = config['mixgen_resize_ratio'])
+    img_func = RoMixGen_Img(image_dict            = image_dict,
+                            image_root            = config['aug_image_root'],
+                            transform_after_mix   = transform_after_mix,
+                            resize_ratio          = config['romixgen_resize_ratio'])
 
     txt_func = RoMixGen_Txt(image_caption       = image_dict)
          

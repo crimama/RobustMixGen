@@ -45,7 +45,7 @@ class re_train_dataset(Dataset):
         return image, caption, self.img_ids[ann['image_id']],ann['image_id']
 '''
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file,romixgen,transform, image_root,mixgen=True,mixgen_ratio=0.1, max_words=30):        
+    def __init__(self, ann_file,transform,image_root,romixgen,romixgen_true=True,romixgen_ratio=0.1, max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
@@ -54,8 +54,8 @@ class re_train_dataset(Dataset):
         self.max_words = max_words
         
         self.romixgen = romixgen 
-        self.mixgen = mixgen 
-        self.mixgen_ratio = mixgen_ratio
+        self.romixgen_true = romixgen_true 
+        self.romixgen_ratio = romixgen_ratio
         
         self.img_ids = {}   
         
@@ -72,7 +72,7 @@ class re_train_dataset(Dataset):
     def __getitem__(self, index):    
         ann = self.ann[index]
         
-        if (self.mixgen) & (random.random() < self.mixgen_ratio):
+        if (self.romixgen_true) & (random.random() < self.romixgen_ratio):
             image,caption = self.romixgen(ann)
         else:
             image_path = os.path.join(self.image_root,ann['image'])
