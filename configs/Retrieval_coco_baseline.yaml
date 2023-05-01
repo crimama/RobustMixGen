@@ -1,4 +1,3 @@
-#train_file:  ['data/COCO/Annotations/coco_train.json'] #image caption json 
 train_file:  ['data/COCO/Annotations/coco_train.json'] #image caption json 
 val_file: 'data/COCO/Annotations/coco_val.json'
 test_file: 'data/COCO/Annotations/coco_test.json'
@@ -32,7 +31,7 @@ schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-mixgen: True
+mixgen: False
 mixgen_ratio: 1 
 mixgen_resize_ratio: 2
 
