@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 from models.model_retrieval import ALBEF
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
+import wandb 
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
@@ -264,6 +265,9 @@ def main(args, config):
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
 
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        wandb.init(project='Romixgen',name=args.output_dir,config=config)
     
     #### Model #### 
     print("Creating model")
@@ -341,7 +345,9 @@ def main(args, config):
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")   
-            
+                    
+                wandb.log(log_stats)
+                
             save_obj = {
                         'model': model_without_ddp.state_dict(),
                         'optimizer': optimizer.state_dict(),
@@ -349,10 +355,10 @@ def main(args, config):
                         'config': config,
                         'epoch': epoch,
                     }
-            #if val_result['r_mean']>best:
-            #    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-            #    best = val_result['r_mean']    
-            #    best_epoch = epoch
+            if val_result['r_mean']>best:
+               torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+               best = val_result['r_mean']    
+               best_epoch = epoch
             torch.save(save_obj,os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
 
         if args.evaluate: 
