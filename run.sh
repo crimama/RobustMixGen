@@ -7,7 +7,7 @@
 #     --checkpoint ./output/Pretrain/ALBEF.pth
 
 CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
-    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_0.0001_romix_test \
+    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_test \
     --checkpoint ./output/Pretrain/ALBEF.pth
 
 #! Image Retrieval eval - coco 
