@@ -145,3 +145,4 @@ cocoapi/
 output/
 .tar.gz 
 *.tar.gz
+wandb/ 
