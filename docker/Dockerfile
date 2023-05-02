@@ -11,7 +11,7 @@ RUN apt-get update && \
 
 RUN pip install --upgrade pip && \
     pip install cython torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113 && \
-    pip install transformers==4.8.1 timm==0.4.9 wget opencv-python ruamel.yaml salesforce-lavis
+    pip install transformers==4.8.1 timm==0.4.9 wget opencv-python ruamel.yaml
 
 
 #install COCOAPI
