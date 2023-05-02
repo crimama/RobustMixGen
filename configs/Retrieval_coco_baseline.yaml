@@ -34,6 +34,7 @@ schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 romixgen: False
 romixgen_ratio: 1 
 romixgen_resize_ratio: 2
+hard_aug: False 
 
 mixgen: False 
 mixgen_num: 16
