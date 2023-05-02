@@ -25,14 +25,13 @@ from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 
-
 from augmentation import mixgen as mg 
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config,delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
@@ -44,7 +43,9 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         if config['mixgen']:
             image, text = mg.mixgen(image, text, num=config['mixgen_num'])
-            
+        
+        
+        
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
         text_input = tokenizer(text, padding='longest', max_length=30, return_tensors="pt").to(device)  
@@ -65,7 +66,12 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         metric_logger.update(loss_ita=loss_ita.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         if epoch==0 and i%step_size==0 and i<=warmup_iterations: 
-            scheduler.step(i//step_size)         
+            scheduler.step(i//step_size)      
+               
+        if utils.is_main_process(): 
+            wandb.log({'loss_ita' : loss_ita.item(),
+                    'loss_itm' : loss_itm.item()
+                    })
         
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -77,9 +83,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
 @torch.no_grad()
 def evaluation(model, data_loader, tokenizer, device, config):
     # test
-    model.eval() 
-    
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    model.eval()
+    metric_logger = utils.MetricLogger(config,delimiter="  ")
     header = 'Evaluation:'    
     
     print('Computing features for evaluation...')
@@ -97,9 +102,8 @@ def evaluation(model, data_loader, tokenizer, device, config):
         text_output = model.text_encoder(text_input.input_ids, attention_mask = text_input.attention_mask, mode='text')  
         text_feat = text_output.last_hidden_state
         text_embed = F.normalize(model.text_proj(text_feat[:,0,:]))
-        text_embeds.append(text_embed.detach().cpu())   
-        text_feats.append(text_feat.detach().cpu())
-        
+        text_embeds.append(text_embed)   
+        text_feats.append(text_feat)
         text_atts.append(text_input.attention_mask)
     text_embeds = torch.cat(text_embeds,dim=0)
     text_feats = torch.cat(text_feats,dim=0)
@@ -109,19 +113,18 @@ def evaluation(model, data_loader, tokenizer, device, config):
     image_embeds = []
     for image, img_id in data_loader: 
         image = image.to(device) 
-        with torch.no_grad():
-            image_feat = model.visual_encoder(image)        
-            image_embed = model.vision_proj(image_feat[:,0,:])            
-            image_embed = F.normalize(image_embed,dim=-1)      
+        image_feat = model.visual_encoder(image)        
+        image_embed = model.vision_proj(image_feat[:,0,:])            
+        image_embed = F.normalize(image_embed,dim=-1)      
         
-        image_feats.append(image_feat.detach().cpu())
-        image_embeds.append(image_embed.detach().cpu())
+        image_feats.append(image_feat)
+        image_embeds.append(image_embed)
      
     image_feats = torch.cat(image_feats,dim=0)
     image_embeds = torch.cat(image_embeds,dim=0)
     
     sims_matrix = image_embeds @ text_embeds.t()
-    score_matrix_i2t = torch.full((len(data_loader.dataset.image),len(texts)),-100.0)
+    score_matrix_i2t = torch.full((len(data_loader.dataset.image),len(texts)),-100.0).to(device)
     
     num_tasks = utils.get_world_size()
     rank = utils.get_rank() 
@@ -132,19 +135,17 @@ def evaluation(model, data_loader, tokenizer, device, config):
     for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
         topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
 
-        encoder_output = image_feats[start+i].repeat(config['k_test'],1,1).to(device)
+        encoder_output = image_feats[start+i].repeat(config['k_test'],1,1)
         encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
-        
-        with torch.no_grad():
-            output = model.text_encoder(encoder_embeds         = text_feats[topk_idx].to(device), 
-                                        attention_mask         = text_atts[topk_idx].to(device),
-                                        encoder_hidden_states  = encoder_output.to(device),
-                                        encoder_attention_mask = encoder_att.to(device),                             
-                                        return_dict            = True,
-                                        mode                   = 'fusion'
-                                        )
+        output = model.text_encoder(encoder_embeds = text_feats[topk_idx], 
+                                    attention_mask = text_atts[topk_idx],
+                                    encoder_hidden_states = encoder_output,
+                                    encoder_attention_mask = encoder_att,                             
+                                    return_dict = True,
+                                    mode = 'fusion'
+                                   )
         score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
-        score_matrix_i2t[start+i,topk_idx] = score.detach().cpu()
+        score_matrix_i2t[start+i,topk_idx] = score
         
     sims_matrix = sims_matrix.t()
     score_matrix_t2i = torch.full((len(texts),len(data_loader.dataset.image)),-100.0).to(device)
@@ -156,20 +157,17 @@ def evaluation(model, data_loader, tokenizer, device, config):
     for i,sims in enumerate(metric_logger.log_every(sims_matrix[start:end], 50, header)): 
         
         topk_sim, topk_idx = sims.topk(k=config['k_test'], dim=0)
-        encoder_output     = image_feats[topk_idx].to(device)
-        encoder_att        = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
-        
-        with torch.no_grad():
-            output = model.text_encoder(encoder_embeds         = text_feats[start+i].repeat(config['k_test'],1,1).to(device), 
-                                        attention_mask         = text_atts[start+i].repeat(config['k_test'],1).to(device),
-                                        encoder_hidden_states  = encoder_output.to(device),
-                                        encoder_attention_mask = encoder_att.to(device),                             
-                                        return_dict            = True,
-                                        mode                   = 'fusion'
-                                        )
-            
+        encoder_output = image_feats[topk_idx]
+        encoder_att = torch.ones(encoder_output.size()[:-1],dtype=torch.long).to(device)
+        output = model.text_encoder(encoder_embeds = text_feats[start+i].repeat(config['k_test'],1,1), 
+                                    attention_mask = text_atts[start+i].repeat(config['k_test'],1),
+                                    encoder_hidden_states = encoder_output,
+                                    encoder_attention_mask = encoder_att,                             
+                                    return_dict = True,
+                                    mode = 'fusion'
+                                   )
         score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
-        score_matrix_t2i[start+i,topk_idx] = score.detach().cpu()       
+        score_matrix_t2i[start+i,topk_idx] = score
 
     if args.distributed:
         dist.barrier()   
@@ -267,7 +265,9 @@ def main(args, config):
 
     #### wandb logging #### 
     if utils.is_main_process(): 
-        wandb.init(project='Romixgen',name=args.output_dir,config=config)
+        import pytz 
+        config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+        wandb.init(project='Romixgen',name=args.output_dir.split('/')[-1],config=config)
     
     #### Model #### 
     print("Creating model")
@@ -317,7 +317,7 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
         
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
@@ -354,7 +354,7 @@ def main(args, config):
                         'lr_scheduler': lr_scheduler.state_dict(),
                         'config': config,
                         'epoch': epoch,
-                    }
+                        }
             if val_result['r_mean']>best:
                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
                best = val_result['r_mean']    
@@ -392,6 +392,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
+    config['output_dir'] = args.output_dir
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         
