@@ -59,21 +59,21 @@ class MiX:
 
     def __call__(self,ann): # ann  = image_caption[index] 
         image_id = ann['image_id'].split('_')[-1]
-        try:
-            if self.image_dict[image_id]['obj_bg'] =='obj':
-                obj_id = image_id 
-                bg_id = random.choice(self.obj_bg_dict["bg"])
-                img,caption = self.mix(obj_id,bg_id) 
-                
-            elif self.image_dict[image_id]['obj_bg'] == 'bg':
-                bg_id = image_id 
-                obj_id = random.choice(self.obj_bg_dict["obj"])
-                img,caption = self.mix(obj_id,bg_id)      
-                      
-            else:
-                img,caption = self.normal_load(ann)
-        except:
-            img,caption = self.normal_load(ann) 
+        #try:
+        if self.image_dict[image_id]['obj_bg'] =='obj':
+            obj_id = image_id 
+            bg_id = random.choice(self.obj_bg_dict["bg"])
+            img,caption = self.mix(obj_id,bg_id) 
+            
+        elif self.image_dict[image_id]['obj_bg'] == 'bg':
+            bg_id = image_id 
+            obj_id = random.choice(self.obj_bg_dict["obj"])
+            img,caption = self.mix(obj_id,bg_id)      
+                    
+        else:
+            img,caption = self.normal_load(ann)
+        #except:
+        #img,caption = self.normal_load(ann) 
 
         return img,caption
             
@@ -205,23 +205,37 @@ class RoMixGen_Txt:
         second_formed_text          = f">>en<< {first_translated_text}"
         second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
         second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
+        
         return second_translated_text
     
-    def replace_word(self,captions, bg_cats, obj_cats):
-        replaced = False
-        for bg_cat, obj_cat in zip(bg_cats, obj_cats):
-            if bg_cat in captions:
-                captions = captions.replace(bg_cat, obj_cat)
-                replaced = True
+    def replace_word(self,captions,bg_cats,obj_cats):
+        caption = np.random.choice(captions,1)[0]
+        '''
+        replaced = False 
+        for bg_cat, obj_cat in zip(bg_cats,obj_cats):
+            if bg_cat in caption:
+                caption = caption.replace(bg_cat, obj_cat)
+                print('True')
+                replaced = True 
+                break
         if not replaced:
-            captions = random.choice(obj_cats) + " " + captions
-        return captions
+            caption = random.choice(obj_cats) + " " + caption
+        '''
+        try:
+            (bg_cat_id, bg_cat) = list(filter(lambda x : x[1] in caption.lower(), enumerate(bg_cats)))[0]
+            caption = caption.lower().replace(bg_cat,obj_cats[bg_cat_id]).capitalize()
+        except IndexError:
+            caption = random.choice(obj_cats) + " " + caption
+        return caption 
 
     def __call__(self,obj_id,bg_id):
         
         obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
         bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
-        bg_caption = self.image_caption[bg_id]["caption"]
+        bg_caption = self.image_caption[bg_id]["captions"]
+        self.bg_cat = bg_cat
+        self.bg_caption = bg_caption 
+        self.obj_cat = obj_cat 
         new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
