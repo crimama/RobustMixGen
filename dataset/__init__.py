@@ -42,7 +42,8 @@ def create_dataset(dataset, config):
                                             normalize,
                                             ])
     
-    mixgen = create_romixgen(config)
+    # 
+    romixgen = create_romixgen(config)
 
     
     
@@ -51,12 +52,12 @@ def create_dataset(dataset, config):
         return dataset      
                
     elif dataset=='re':          
-        train_dataset = re_train_dataset(ann_file    = config['train_file'],
-                                        romixgen     = mixgen, 
-                                        transform    = train_transform,
-                                        image_root   = config['image_root'],
-                                        mixgen_ratio = config['mixgen_ratio'], # hyper parameter 확률 0 ~ 1값 
-                                        mixgen       = config['mixgen']
+        train_dataset = re_train_dataset(ann_file      = config['train_file'],
+                                        transform      = train_transform,
+                                        image_root     = config['image_root'],
+                                        romixgen       = romixgen, 
+                                        romixgen_true  = config['romixgen'],
+                                        romixgen_ratio = config['romixgen_ratio'] # hyper parameter 확률 0 ~ 1값 
                                         )
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                

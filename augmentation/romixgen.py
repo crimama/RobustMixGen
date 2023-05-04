@@ -263,7 +263,7 @@ class RoMixGen_Txt:
         
         concat_token = obj_tok[:2] + bg_tok[2:] # concat two caption naively 
         concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption """
-        #! backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
+        backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
         #backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
         
         #return backtranslated_text # return all 5 captions, 

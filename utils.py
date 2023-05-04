@@ -3,7 +3,8 @@ import io
 import os
 import time
 from collections import defaultdict, deque
-import datetime
+import datetime 
+import pytz
 
 import torch
 import torch.distributed as dist
@@ -71,9 +72,10 @@ class SmoothedValue(object):
 
 
 class MetricLogger(object):
-    def __init__(self, delimiter="\t"):
+    def __init__(self,config, delimiter="\t"):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
+        self.config = config 
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -128,7 +130,8 @@ class MetricLogger(object):
             'eta: {eta}',
             '{meters}',
             'time: {time}',
-            'data: {data}'
+            'data: {data}',
+            'now: {now}'
         ]
         if torch.cuda.is_available():
             log_msg.append('max mem: {memory:.0f}')
@@ -142,22 +145,32 @@ class MetricLogger(object):
                 eta_seconds = iter_time.global_avg * (len(iterable) - i)
                 eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))
                 if torch.cuda.is_available():
-                    print(log_msg.format(
+                    step_msg = log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
                         time=str(iter_time), data=str(data_time),
-                        memory=torch.cuda.max_memory_allocated() / MB))
+                        now=str(datetime.datetime.now(pytz.timezone('Asia/Seoul'))),
+                        memory=torch.cuda.max_memory_allocated() / MB)
                 else:
-                    print(log_msg.format(
+                    step_msg = log_msg.format(
                         i, len(iterable), eta=eta_string,
                         meters=str(self),
-                        time=str(iter_time), data=str(data_time)))
+                        time=str(iter_time), data=str(data_time),
+                        now=str(datetime.datetime.now(pytz.timezone('Asia/Seoul'))))
+                print(step_msg)
+                if is_main_process():
+                    with open(os.path.join(self.config['output_dir'], "log.txt"),"a") as f:
+                        f.write(step_msg + "\n")   
             i += 1
             end = time.time()
         total_time = time.time() - start_time
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
-        print('{} Total time: {} ({:.4f} s / it)'.format(
-            header, total_time_str, total_time / len(iterable)))
+        print_message = '{} Total time: {} ({:.4f} s / it)'.format(
+            header, total_time_str, total_time / len(iterable))
+        if is_main_process():
+            with open(os.path.join(self.config['output_dir'], "log.txt"),"a") as f:
+                f.write(print_message + "\n")   
+        print(print_message)
         
 
 

@@ -18,20 +18,20 @@ from torch.utils.data import DataLoader
 from models.model_retrieval import ALBEF
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
+import wandb 
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 
-from augmentation.romixgen import BackTranslation
+from augmentation import mixgen as mg 
 
-
-def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config,delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
@@ -41,10 +41,11 @@ def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_ste
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        text = backtrans(text)
+        if config['mixgen']:
+            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
         
-        # !if config['mixgen']:
-        # !        image, text = mg.mixgen(image, text, num=16)
+        
+        
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
         text_input = tokenizer(text, padding='longest', max_length=30, return_tensors="pt").to(device)  
@@ -65,7 +66,12 @@ def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_ste
         metric_logger.update(loss_ita=loss_ita.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         if epoch==0 and i%step_size==0 and i<=warmup_iterations: 
-            scheduler.step(i//step_size)         
+            scheduler.step(i//step_size)      
+               
+        if utils.is_main_process(): 
+            wandb.log({'loss_ita' : loss_ita.item(),
+                    'loss_itm' : loss_itm.item()
+                    })
         
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -77,9 +83,8 @@ def train(model, data_loader, backtrans, optimizer, tokenizer, epoch, warmup_ste
 @torch.no_grad()
 def evaluation(model, data_loader, tokenizer, device, config):
     # test
-    model.eval() 
-    
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    model.eval()
+    metric_logger = utils.MetricLogger(config,delimiter="  ")
     header = 'Evaluation:'    
     
     print('Computing features for evaluation...')
@@ -257,7 +262,12 @@ def main(args, config):
                                                           collate_fns=[None,None,None])   
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-    backtrans = BackTranslation(device)
+
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        import pytz 
+        config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+        wandb.init(project='Romixgen_small',name=args.output_dir.split('/')[-1],config=config)
     
     #### Model #### 
     print("Creating model")
@@ -307,47 +317,50 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, backtrans, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
-            
-        score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
-        score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
+        
+        #score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
+        #score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
     
         if utils.is_main_process():  
-      
-            val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
-            print(val_result)
-            test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
-            print(test_result)
+            
+            #val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
+            #print(val_result)
+            #test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
+            #print(test_result)
+            
             
             if args.evaluate:                
                 log_stats = {**{f'val_{k}': v for k, v in val_result.items()},
                              **{f'test_{k}': v for k, v in test_result.items()},                  
-                             'epoch': epoch,
+                            'epoch': epoch,
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
             else:
                 log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             **{f'val_{k}': v for k, v in val_result.items()},
-                             **{f'test_{k}': v for k, v in test_result.items()},                  
-                             'epoch': epoch,
+                             #**{f'val_{k}': v for k, v in val_result.items()},
+                             #**{f'test_{k}': v for k, v in test_result.items()},                  
+                            'epoch': epoch,
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")   
+                    
+                wandb.log(log_stats)
                 
-                save_obj = {
+            save_obj = {
                         'model': model_without_ddp.state_dict(),
                         'optimizer': optimizer.state_dict(),
                         'lr_scheduler': lr_scheduler.state_dict(),
                         'config': config,
                         'epoch': epoch,
-                    }
-                if val_result['r_mean']>best:
-                    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-                    best = val_result['r_mean']    
-                    best_epoch = epoch
+                        }
+            # if val_result['r_mean']>best:
+            #    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+            #    best = val_result['r_mean']    
+            #    best_epoch = epoch
             torch.save(save_obj,os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
-            
+
         if args.evaluate: 
             break
         
@@ -379,6 +392,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
+    config['output_dir'] = args.output_dir
 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         
