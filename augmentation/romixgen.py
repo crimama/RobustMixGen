@@ -8,6 +8,30 @@ import os
 from transformers import MarianMTModel, MarianTokenizer
 import random 
 import torch
+import torch.distributed as dist
+
+def is_dist_avail_and_initialized():
+    if not dist.is_available():
+        return False
+    if not dist.is_initialized():
+        return False
+    return True
+
+
+def get_world_size():
+    if not is_dist_avail_and_initialized():
+        return 1
+    return dist.get_world_size()
+
+
+def get_rank():
+    if not is_dist_avail_and_initialized():
+        return 0
+    return dist.get_rank()
+
+
+def is_main_process():
+    return get_rank() == 0
 
 class MiX:
     def __init__(self, image_dict, obj_bg_dict, img_aug_function, txt_aug_function, 
@@ -32,25 +56,43 @@ class MiX:
         img = self.img_aug(obj_id,bg_id)
         txt = self.txt_aug(obj_id,bg_id)
         return img,txt 
+    
+    def select_id(self,image_id,obj_bg):
+        if obj_bg =='obj':
+            obj_id = image_id 
+            bg_id = random.choice(self.obj_bg_dict["bg"])
+        elif obj_bg == 'bg': 
+            bg_id = image_id 
+            obj_id = random.choice(self.obj_bg_dict["obj"])            
+            
+        return obj_id, bg_id 
 
     def __call__(self,ann): # ann  = image_caption[index] 
         image_id = ann['image_id'].split('_')[-1]
+        self.image_id = image_id 
+        
+        #Typeerror : #obj 혹은 bg에 bbox annotation 정보가 없는 경우 
+        #ValueError : #objet image의 크기가 너무 커서 resize해도 bg로 들어가지 않는 경우 
+        #UnboundLocalError: #obj 또는 bg 에 unusable_bg가 걸리는 경우 
+        
         try:
-            if self.image_dict[image_id]['obj_bg'] =='obj':
-                obj_id = image_id 
-                bg_id = random.choice(self.obj_bg_dict["bg"])
+            obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
+            img,caption = self.mix(obj_id,bg_id)
+            
+        except  (TypeError, ValueError, UnboundLocalError) : 
+            try:
+                obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
                 img,caption = self.mix(obj_id,bg_id) 
                 
-            elif self.image_dict[image_id]['obj_bg'] == 'bg':
-                bg_id = image_id 
-                obj_id = random.choice(self.obj_bg_dict["obj"])
-                img,caption = self.mix(obj_id,bg_id)      
-                      
-            else:
-                img,caption = self.normal_load(ann)
-        except:
-            img,caption = self.normal_load(ann) 
-
+            except  (TypeError, ValueError, UnboundLocalError) : 
+                try:
+                    obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
+                    img,caption = self.mix(obj_id,bg_id)           
+                    
+                except  (TypeError, ValueError, UnboundLocalError) : 
+                    img,caption = self.normal_load(ann) #self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨 
+                    
+                    #caption = np.random.choice(caption,1)[0]
         return img,caption
             
             
@@ -163,37 +205,53 @@ class RoMixGen_Img:
     
 class RoMixGen_Txt:
     def __init__(self, image_caption, first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
-        self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
-        self.first_model            = MarianMTModel.from_pretrained(first_model_name)
-        self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
-        self.second_model           = MarianMTModel.from_pretrained(second_model_name)
+        
+        # self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
+        # self.first_model            = MarianMTModel.from_pretrained(first_model_name)
+        # self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
+        # self.second_model           = MarianMTModel.from_pretrained(second_model_name)
 
         self.image_caption          = image_caption
         
-    def back_translate(self,text):
-        first_formed_text           = f">>fr<< {text}"
-        first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
-        first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
-        second_formed_text          = f">>en<< {first_translated_text}"
-        second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
-        second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
-        return second_translated_text
+        
+    # def back_translate(self,text):
+    #     first_formed_text           = f">>fr<< {text}"
+    #     first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
+    #     first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
+    #     second_formed_text          = f">>en<< {first_translated_text}"
+    #     second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
+    #     second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
+        
+    #     return second_translated_text
     
-    def replace_word(self,captions, bg_cats, obj_cats):
-        replaced = False
-        for bg_cat, obj_cat in zip(bg_cats, obj_cats):
-            if bg_cat in captions:
-                captions = captions.replace(bg_cat, obj_cat)
-                replaced = True
+    def replace_word(self,captions,bg_cats,obj_cats):
+        caption = np.random.choice(captions,1)[0]
+        '''
+        replaced = False 
+        for bg_cat, obj_cat in zip(bg_cats,obj_cats):
+            if bg_cat in caption:
+                caption = caption.replace(bg_cat, obj_cat)
+                print('True')
+                replaced = True 
+                break
         if not replaced:
-            captions = random.choice(obj_cats) + " " + captions
-        return captions
+            caption = random.choice(obj_cats) + " " + caption
+        '''
+        try:
+            (bg_cat_id, bg_cat) = list(filter(lambda x : x[1] in caption.lower(), enumerate(bg_cats)))[0]
+            caption = caption.lower().replace(bg_cat,obj_cats[bg_cat_id]).capitalize()
+        except IndexError:
+            caption = random.choice(obj_cats) + " " + caption
+        return caption 
 
     def __call__(self,obj_id,bg_id):
         
         obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
         bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
-        bg_caption = self.image_caption[bg_id]["caption"]
+        bg_caption = self.image_caption[bg_id]["captions"]
+        self.bg_cat = bg_cat
+        self.bg_caption = bg_caption 
+        self.obj_cat = obj_cat 
         new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
@@ -201,11 +259,10 @@ class RoMixGen_Txt:
         
         concat_token = obj_tok[:2] + bg_tok[2:] # concat two caption naively 
         concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption """
-        backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
-        #backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
+        #backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
         
-        return backtranslated_text # return all 5 captions, 
-        #return new_caption
+        #return backtranslated_text # return all 5 captions, 
+        return new_caption
                     
                     
 class BackTranslation:
