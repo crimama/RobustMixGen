@@ -31,11 +31,11 @@ schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-romixgen: True
+romixgen: False
 romixgen_ratio: 1 
 romixgen_resize_ratio: 6
 hard_aug: False
-backtrans: True 
+backtrans: False
 
 mixgen: False 
 mixgen_num: 16
