@@ -26,8 +26,10 @@ from scheduler import create_scheduler
 from optim import create_optimizer
 
 from augmentation import mixgen as mg 
+import nlpaug.augmenter.word as naw
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
+
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans):
     # train
     model.train()  
     
@@ -43,6 +45,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         if config['mixgen']:
             image, text = mg.mixgen(image, text, num=config['mixgen_num'])
+        if config['backtrans']:
+            text = backtrans.augment(text)
         
         
         
@@ -262,6 +266,8 @@ def main(args, config):
                                                           collate_fns=[None,None,None])   
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    
+    backtrans = naw.BackTranslationAug(device=device)
 
     #### wandb logging #### 
     if utils.is_main_process(): 
@@ -317,7 +323,7 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb,backtrans)  
         
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
