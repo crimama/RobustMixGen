@@ -26,8 +26,10 @@ from scheduler import create_scheduler
 from optim import create_optimizer
 
 from augmentation import mixgen as mg 
+import nlpaug.augmenter.word as naw
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
+
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans):
     # train
     model.train()  
     
@@ -43,6 +45,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         if config['mixgen']:
             image, text = mg.mixgen(image, text, num=config['mixgen_num'])
+        if config['backtrans']:
+            text = backtrans.augment(text)
         
         
         
@@ -262,12 +266,14 @@ def main(args, config):
                                                           collate_fns=[None,None,None])   
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    
+    backtrans = naw.BackTranslationAug(device=device)
 
     #### wandb logging #### 
     if utils.is_main_process(): 
         import pytz 
         config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-        wandb.init(project='Romixgen_small',name=args.output_dir.split('/')[-1],config=config)
+        wandb.init(project='Romixgen',name=args.output_dir.split('/')[-1],config=config)
     
     #### Model #### 
     print("Creating model")
@@ -317,17 +323,17 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb,backtrans)  
         
-        #score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
-        #score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
+        score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
+        score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
     
         if utils.is_main_process():  
             
-            #val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
-            #print(val_result)
-            #test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
-            #print(test_result)
+            val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
+            print(val_result)
+            test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
+            print(test_result)
             
             
             if args.evaluate:                
@@ -339,8 +345,8 @@ def main(args, config):
                     f.write(json.dumps(log_stats) + "\n")     
             else:
                 log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             #**{f'val_{k}': v for k, v in val_result.items()},
-                             #**{f'test_{k}': v for k, v in test_result.items()},                  
+                             **{f'val_{k}': v for k, v in val_result.items()},
+                             **{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
                             }
                 with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
@@ -355,10 +361,10 @@ def main(args, config):
                         'config': config,
                         'epoch': epoch,
                         }
-            # if val_result['r_mean']>best:
-            #    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-            #    best = val_result['r_mean']    
-            #    best_epoch = epoch
+            if val_result['r_mean']>best:
+               torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+               best = val_result['r_mean']    
+               best_epoch = epoch
             torch.save(save_obj,os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
 
         if args.evaluate: 
