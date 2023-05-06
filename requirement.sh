@@ -3,6 +3,7 @@ pip install transformers==4.8.1
 pip install timm==0.4.9
 pip install opencv-python
 pip install ruamel.yaml 
+pip install nlpaug 
 apt-get update && apt-get install libgl1
 apt-get install libglib2.0
 
