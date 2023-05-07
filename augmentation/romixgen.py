@@ -126,10 +126,11 @@ class MiX:
 
                 
 class RoMixGen_Img:
-    def __init__(self, image_root, transform_after_mix, resize_ratio=1 ):
+    def __init__(self, image_root, transform_after_mix, midset_bool, resize_ratio=1 ):
         # Image 
         self.image_root = image_root                   # preprocessed image for augmentation root 
         self.transform_after_mix = transform_after_mix # transforms functions after augmentation 
+        self.midset_bool = midset_bool                # if True, use midset
         self.resize_ratio = resize_ratio                # how large obj image resized 
 
     def __get_dict__(self,img_info):
@@ -151,38 +152,42 @@ class RoMixGen_Img:
         # obj 이미지 cutting 
         bboxes = self.obj_inform['max_obj_bbox'] # obj image 정보 중 max obj bbox 가져 옴 
         obj_img = self.__cut_obj__(bboxes,obj_img) # bbox 정보로 이미지 cut 
-        
-        #배경 이미지의 bbox 포인트 값 및 width, height 계산 
-        bg_bboxes = self.bg_inform['max_obj_bbox']
-        bg_x_left,bg_x_right,bg_y_up,bg_y_down = self.bbox_point(bg_bboxes)
+        if self.midset_bool:
+            #배경 이미지의 bbox 포인트 값 및 width, height 계산 
+            bg_bboxes = self.bg_inform['max_obj_bbox']
+            bg_x_left,bg_x_right,bg_y_up,bg_y_down = self.bbox_point(bg_bboxes)
 
-        width = bg_x_right - bg_x_left
-        height = bg_y_down - bg_y_up 
+            width = bg_x_right - bg_x_left
+            height = bg_y_down - bg_y_up 
 
-        #resize 기준 및 length 계산 
-        length = {'w_h':'height','length':height} if obj_img.shape[0] < obj_img.shape[1] else {'w_h':'width','length':width}
-        
-        #resize 기준 대비 다른 길이 비율 계산 
-        obj_ratio = obj_img.shape[0] / obj_img.shape[1] #height / width 
-        #resize 
-        if length['w_h'] == 'height': # height 
-            dsize = (int(length['length']/obj_ratio*self.resize_ratio),int(length['length']*self.resize_ratio))
-            obj_img = cv2.resize(obj_img,dsize=(dsize))
-        else:                         # width 
-            dsize = (int(length['length']*self.resize_ratio),int(length['length']*obj_ratio*self.resize_ratio))
-            obj_img = cv2.resize(obj_img,dsize=(dsize))
+            #resize 기준 및 length 계산 
+            length = {'w_h':'height','length':height} if obj_img.shape[0] < obj_img.shape[1] else {'w_h':'width','length':width}
+            
+            #resize 기준 대비 다른 길이 비율 계산 
+            obj_ratio = obj_img.shape[0] / obj_img.shape[1] #height / width 
+            #resize 
+            if length['w_h'] == 'height': # height 
+                dsize = (int(length['length']/obj_ratio*self.resize_ratio),int(length['length']*self.resize_ratio))
+                obj_img = cv2.resize(obj_img,dsize=(dsize))
+            else:                         # width 
+                dsize = (int(length['length']*self.resize_ratio),int(length['length']*obj_ratio*self.resize_ratio))
+                obj_img = cv2.resize(obj_img,dsize=(dsize))
         return obj_img 
         
     def __bg_pre__(self,obj_img,bg_img):
         bg_img = np.array(bg_img)
-        
-        # boj 이미지의 width, height 계산 
+    
+        # obj 이미지의 width, height 계산 
         height = obj_img.shape[0]
         width = obj_img.shape[1]
         
-        # 배경 이미지의 mid point랑 obj 이미지의 shape으로 붙일 영역 계산
-        mid_x = int(self.bg_inform['max_obj_midpoint'][0])
-        mid_y = int(self.bg_inform['max_obj_midpoint'][1])
+        if self.midset_bool:
+            # 배경 이미지의 mid point랑 obj 이미지의 shape으로 붙일 영역 계산
+            mid_x = int(self.bg_inform['max_obj_midpoint'][0])
+            mid_y = int(self.bg_inform['max_obj_midpoint'][1])
+        else:
+            mid_x = int(self.obj_inform['max_obj_midpoint'][0])
+            mid_y = int(self.obj_inform['max_obj_midpoint'][1])
 
         x_left = mid_x - math.ceil(width/2)
         x_right = mid_x + int(width/2)
@@ -214,8 +219,8 @@ class RoMixGen_Img:
         
     def __call__(self,obj_id,bg_id):
         
-        self.obj_inform = self.image_info_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
-        self.bg_inform  = self.image_info_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
+        self.obj_inform = self.img_info_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
+        self.bg_inform  = self.img_info_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
         
         # image open 
         obj_img = Image.open(os.path.join(self.image_root, self.obj_inform['file_name'])).convert('RGB')
@@ -233,11 +238,25 @@ class RoMixGen_Img:
     
 class RoMixGen_Txt:
     def __init__(self, first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
-        pass
+        self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
+        self.first_model            = MarianMTModel.from_pretrained(first_model_name)
+        self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
+        self.second_model           = MarianMTModel.from_pretrained(second_model_name)
+
+        #self.image_caption          = image_caption
 
     def __get_dict__(self,img_info):
         self.img_info_dict = img_info
-
+    
+    def back_translate(self,text):
+        first_formed_text           = f">>fr<< {text}"
+        first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
+        first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
+        second_formed_text          = f">>en<< {first_translated_text}"
+        second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
+        second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
+        return second_translated_text
+    
     def replace_word(self,captions, bg_cats, obj_cats):
         replaced = False
         for bg_cat, obj_cat in zip(bg_cats, obj_cats):
@@ -249,14 +268,11 @@ class RoMixGen_Txt:
         return captions
 
     def __call__(self,obj_id,bg_id):
-
-        self.obj_inform = self.img_info_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴
-        self.bg_inform  = self.img_info_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴
         
-        obj_cat = self.obj_inform["max_obj_cat"] + self.obj_inform["max_obj_super_cat"]
-        bg_cat = self.bg_inform["max_obj_cat"] + self.bg_inform["max_obj_super_cat"]
-        bg_captions = self.bg_inform["captions"]
-        new_captions = self.replace_word(bg_captions, bg_cat, obj_cat)
+        obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
+        bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
+        bg_caption = self.img_info_dict[bg_id]["caption"]
+        new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
         bg_tok = self.first_model_tokenizer.encode(bg_caption)   # caption to token 
@@ -266,8 +282,8 @@ class RoMixGen_Txt:
         backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
         #backtranslated_text = self.back_translate(concat_text) # Eng - Fren - Eng 
         
-        #return backtranslated_text # return all 5 captions, 
-        return new_captions
+        return backtranslated_text # return all 5 captions, 
+        #return new_caption
                     
                     
 class BackTranslation:

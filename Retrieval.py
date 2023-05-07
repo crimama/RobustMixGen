@@ -267,7 +267,7 @@ def main(args, config):
     if utils.is_main_process(): 
         import pytz 
         config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-        wandb.init(project='Romixgen_small',name=args.output_dir.split('/')[-1],config=config)
+        wandb.init(project='Romixgen_small_woojun',name=args.output_dir.split('/')[-1],config=config)
     
     #### Model #### 
     print("Creating model")
@@ -388,7 +388,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    parser.add_argument('--distributed', default=True, type=bool)
+    parser.add_argument('--distributed', default=False, type=bool) #originaly true but woojun changed
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)

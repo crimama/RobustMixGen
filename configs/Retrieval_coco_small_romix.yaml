@@ -4,13 +4,13 @@ test_file: 'data/COCO/Annotations/coco_test.json'
 image_root: 'data/COCO/Images'
 
 # json file for data augmentation 
-image_dict_file: 'data/COCO/Annotations/coco_img_info_0.01_bbox_center_0.7.json' # aug json 
-obj_bg_dict_file: 'data/COCO/Annotations/coco_objbg_info_0.01_bbox_center_0.7.json'
-aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root 
-
+obj_bg_threshold : 0.01
+bg_center_threshold : 0.7
+img_midset : False
+mixgen_resize_ratio: 2
+img_info_json : 'data/COCO/Annotations/coco_img_info_small.json'
 
 bert_config: 'configs/config_bert.json'
-
 image_res: 384
 batch_size_train: 2
 batch_size_test: 1
