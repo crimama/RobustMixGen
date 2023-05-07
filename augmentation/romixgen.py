@@ -21,7 +21,7 @@ class MiX:
         self.normal_image_root = normal_image_root
 
         self.image_info_dict, self.obj_bg_dict = self.romixgen_preset(self.use_sub_dict_key(json.load(open(image_info,'r'),),
-                                                    ['file_name', 'width', 'height', 'max_obj_super_cat','max_obj_area', 'max_obj_midpoint','max_obj_bbox', 'max_obj_area_portion','captions']),
+                                                    ['file_name', 'width', 'height', 'max_obj_super_cat','max_obj_cat','max_obj_area', 'max_obj_midpoint','max_obj_bbox', 'max_obj_area_portion','captions']),
                                                         obj_bg_threshold, bg_center_threshold) 
             
         #after initializing img_infodict and obj_bg_dict, pass them to romixgen_img, and romixgen_txt
@@ -76,7 +76,7 @@ class MiX:
                             img_info_dict[key]["obj_bg"] = "unusable_bg"
 
                 else:  # max obj 비어있는 경우 (그냥 real bg로 저장)
-                    img_info_dict[key]["obj_bg"] = "bg"
+                    img_info_dict[key]["obj_bg"] = "unusable_bg"
 
             except Exception as e:
                 print(f"Error processing image {img_info_dict[key]['file_name']}: {e}")
@@ -103,25 +103,43 @@ class MiX:
         img = self.img_aug(obj_id,bg_id)
         txt = self.txt_aug(obj_id,bg_id)
         return img,txt 
+    
+    def select_id(self,image_id,obj_bg):
+        if obj_bg =='obj':
+            obj_id = image_id 
+            bg_id = random.choice(self.obj_bg_dict["bg"])
+        elif obj_bg == 'bg': 
+            bg_id = image_id 
+            obj_id = random.choice(self.obj_bg_dict["obj"])            
+            
+        return obj_id, bg_id 
 
-    def __call__(self,ann): # ann  = img_info_dict[index] 
+    def __call__(self,ann): # ann  = image_caption[index] 
         image_id = ann['image_id'].split('_')[-1]
+        self.image_id = image_id 
+        
+        #Typeerror : #obj 혹은 bg에 bbox annotation 정보가 없는 경우 
+        #ValueError : #objet image의 크기가 너무 커서 resize해도 bg로 들어가지 않는 경우 
+        #UnboundLocalError: #obj 또는 bg 에 unusable_bg가 걸리는 경우 
+        
         try:
-            if self.image_info_dict[image_id]['obj_bg'] =='obj':
-                obj_id = image_id 
-                bg_id = random.choice(self.obj_bg_dict["bg"])
+            obj_id,bg_id = self.select_id(image_id,self.image_info_dict[image_id]['obj_bg'])
+            img,caption = self.mix(obj_id,bg_id)
+            
+        except  (TypeError, ValueError, UnboundLocalError) : 
+            try:
+                obj_id,bg_id = self.select_id(image_id,self.image_info_dict[image_id]['obj_bg'])
                 img,caption = self.mix(obj_id,bg_id) 
                 
-            elif self.image_info_dict[image_id]['obj_bg'] == 'bg':
-                bg_id = image_id 
-                obj_id = random.choice(self.obj_bg_dict["obj"])
-                img,caption = self.mix(obj_id,bg_id)      
-                      
-            else:
-                img,caption = self.normal_load(ann)
-        except:
-            img,caption = self.normal_load(ann) 
-
+            except  (TypeError, ValueError, UnboundLocalError) : 
+                try:
+                    obj_id,bg_id = self.select_id(image_id,self.image_info_dict[image_id]['obj_bg'])
+                    img,caption = self.mix(obj_id,bg_id)           
+                    
+                except  (TypeError, ValueError, UnboundLocalError) : 
+                    img,caption = self.normal_load(ann) #self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨 
+                    
+                    #caption = np.random.choice(caption,1)[0]
         return img,caption
 
                 
@@ -257,21 +275,31 @@ class RoMixGen_Txt:
         second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
         return second_translated_text
     
-    def replace_word(self,captions, bg_cats, obj_cats):
-        replaced = False
-        for bg_cat, obj_cat in zip(bg_cats, obj_cats):
-            if bg_cat in captions:
-                captions = captions.replace(bg_cat, obj_cat)
-                replaced = True
+    def replace_word(self,captions,bg_cats,obj_cats):
+        caption = np.random.choice(captions,1)[0]
+        '''
+        replaced = False 
+        for bg_cat, obj_cat in zip(bg_cats,obj_cats):
+            if bg_cat in caption:
+                caption = caption.replace(bg_cat, obj_cat)
+                print('True')
+                replaced = True 
+                break
         if not replaced:
-            captions = random.choice(obj_cats) + " " + captions
-        return captions
+            caption = random.choice(obj_cats) + " " + caption
+        '''
+        try:
+            (bg_cat_id, bg_cat) = list(filter(lambda x : x[1] in caption.lower(), enumerate(bg_cats)))[0]
+            caption = caption.lower().replace(bg_cat,obj_cats[bg_cat_id]).capitalize()
+        except IndexError:
+            caption = random.choice(obj_cats) + " " + caption
+        return caption 
 
     def __call__(self,obj_id,bg_id):
         
         obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
         bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
-        bg_caption = self.img_info_dict[bg_id]["caption"]
+        bg_caption = self.img_info_dict[bg_id]["captions"]
         new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 

@@ -10,15 +10,15 @@
 #    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_test \
 #    --checkpoint ./output/Pretrain/ALBEF.pth
 
-#CUDA_VISIBLE_DEVICES=0  python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
-#    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_test \
-#    --checkpoint ./output/Pretlsrain/ALBEF_4M.pth
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
+    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_test \
+    --checkpoint ./output/Pretrain/ALBEF_4M.pth
 
 #우준환경 single gpu
-CUDA_VISIBLE_DEVICES=0 python Retrieval.py \
-    --config ./configs/Retrieval_coco_small_romix.yaml \
-    --output_dir output/Retrieval_coco_small_test \
-    --checkpoint ./output/Pretrain/ALBEF_4M.pth \
+#CUDA_VISIBLE_DEVICES=0 python Retrieval.py \
+#    --config ./configs/Retrieval_coco_small_romix.yaml \
+#    --output_dir output/Retrieval_coco_small_test \
+#    --checkpoint ./output/Pretrain/ALBEF_4M.pth \
 
 #! Image Retrieval eval - coco 
 #  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
