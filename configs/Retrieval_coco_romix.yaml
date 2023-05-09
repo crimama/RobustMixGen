@@ -1,12 +1,13 @@
-train_file:  ['data/COCO/Annotations/small_coco_train.json'] #image caption json 
+train_file:  ['data/COCO/Annotations/coco_train.json'] #image caption json 
 val_file: 'data/COCO/Annotations/coco_val.json'
 test_file: 'data/COCO/Annotations/coco_test.json'
 image_root: 'data/COCO/Images'
 
-# json file for data augmentation 
-image_dict_file: 'data/COCO/Annotations/coco_img_info_0.01_bbox_center_0.7.json' # aug json 
-obj_bg_dict_file: 'data/COCO/Annotations/coco_objbg_info_0.01_bbox_center_0.7.json'
-aug_image_root: 'data/COCO/Images_0.01_bbox_center_0.7' #Pretrained image root 
+#romixgen set
+obj_bg_threshold : 0.01
+bg_center_threshold : 0.7
+img_midset: False
+img_info_json : 'data/COCO/Annotations/coco_img_info.json'
 
 
 bert_config: 'configs/config_bert.json'
@@ -29,8 +30,12 @@ warm_up: True
 optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
 schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
 
+romixgen: True
+romixgen_ratio: 1 
+romixgen_resize_ratio: 2
 
-
-mixgen: True
+mixgen: False
 mixgen_ratio: 1 
 mixgen_resize_ratio: 
+
+hard_aug: False

@@ -13,7 +13,7 @@ import json
 class MiX:
     def __init__(self, img_aug_function, txt_aug_function,
                 normal_image_root, normal_transform,
-                image_info, obj_bg_threshold = 0.2, bg_center_threshold = 0.7):
+                image_info, obj_bg_threshold = 0.01, bg_center_threshold = 0.7):
         
         self.img_aug = img_aug_function
         self.txt_aug = txt_aug_function 
@@ -56,7 +56,7 @@ class MiX:
             return False
     
     # romixgen 적용한 dictionary를 만들어주는 함수
-    def romixgen_preset(self, img_info_dict, obj_bg_threshold = 0.2, bg_center_threshold = 0.7): 
+    def romixgen_preset(self, img_info_dict, obj_bg_threshold = 0.01, bg_center_threshold = 0.7): 
         seg_or_bbox = 'bbox'
         for key in (img_info_dict.keys()):
             try:

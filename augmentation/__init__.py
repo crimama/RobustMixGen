@@ -26,7 +26,7 @@ def create_romixgen(config):
                                             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                                         ])
     
-    config             = yaml.load(open('./configs/Retrieval_coco_small_romix.yaml'),Loader=yaml.Loader)
+    #config             = yaml.load(open('./configs/Retrieval_coco_romix.yaml'),Loader=yaml.Loader)
     
     
     img_func = RoMixGen_Img(image_root =            config['image_root'],
