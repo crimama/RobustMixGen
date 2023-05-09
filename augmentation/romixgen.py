@@ -63,7 +63,10 @@ class MiX:
             bg_id = random.choice(self.obj_bg_dict["bg"])
         elif obj_bg == 'bg': 
             bg_id = image_id 
-            obj_id = random.choice(self.obj_bg_dict["obj"])            
+            obj_id = random.choice(self.obj_bg_dict["obj"])        
+        else:
+            obj_id = random.choice(self.obj_bg_dict["obj"])        
+            bg_id = random.choice(self.obj_bg_dict["bg"])
             
         return obj_id, bg_id 
 
@@ -71,28 +74,10 @@ class MiX:
         image_id = ann['image_id'].split('_')[-1]
         self.image_id = image_id 
         
-        #Typeerror : #obj 혹은 bg에 bbox annotation 정보가 없는 경우 
-        #ValueError : #objet image의 크기가 너무 커서 resize해도 bg로 들어가지 않는 경우 
-        #UnboundLocalError: #obj 또는 bg 에 unusable_bg가 걸리는 경우 
-        
-        try:
-            obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
-            img,caption = self.mix(obj_id,bg_id)
+
+        obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
+        img,caption = self.mix(obj_id,bg_id)
             
-        except  (TypeError, ValueError, UnboundLocalError) : 
-            try:
-                obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
-                img,caption = self.mix(obj_id,bg_id) 
-                
-            except  (TypeError, ValueError, UnboundLocalError) : 
-                try:
-                    obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
-                    img,caption = self.mix(obj_id,bg_id)           
-                    
-                except  (TypeError, ValueError, UnboundLocalError) : 
-                    img,caption = self.normal_load(ann) #self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨 
-                    
-                    #caption = np.random.choice(caption,1)[0]
         return img,caption
             
             
@@ -118,7 +103,7 @@ class RoMixGen_Img:
         x_left,x_right,y_up,y_down = self.bbox_point(bboxes)
         obj_img = np.array(obj_img)[y_up:y_down,x_left:x_right,:]
         return obj_img 
-        
+    '''
     def __obj_pre__(self,obj_img):
         #! obj img 
         # obj 이미지 cutting 
@@ -185,7 +170,41 @@ class RoMixGen_Img:
         bg_img[y_up:y_down,x_left:x_right,:] = obj_img
         
         return bg_img 
-        
+    '''        
+    
+    def get_xy_point(self,bg_img,obj_img,bg_inform):
+        (bg_y,bg_x,_) = np.array(bg_img).shape
+        (obj_y,obj_x,_) = np.array(obj_img).shape
+        [bg_midpoint_x,bg_midpoint_y] = bg_inform['max_obj_midpoint']
+
+        # 검정박스 우측 아래 -> 우측 아래 코너에 맞춰야 함 
+        if  (bg_midpoint_y > bg_y/2) & (bg_midpoint_x > bg_x/2):
+            # 오른쪽 아래 
+            y = bg_inform['max_obj_bbox'][1] + bg_inform['max_obj_bbox'][3]
+            x = bg_inform['max_obj_bbox'][0] + bg_inform['max_obj_bbox'][2]
+            x,y = x - obj_x , y - obj_y
+        # 검정박스 좌측 아래 -> 좌측 아래 코너에 맞춰야 함 
+        elif  (bg_midpoint_y > bg_y/2) & (bg_midpoint_x < bg_x/2):
+            # 좌측 아래
+            y = bg_inform['max_obj_bbox'][1] + bg_inform['max_obj_bbox'][3]
+            x = bg_inform['max_obj_bbox'][0] 
+            y =  y - obj_y
+            
+        # 검정박스 우측 위 -> 우측 위 코너에 맞춰야 함 
+        elif  (bg_midpoint_y < bg_y/2) & (bg_midpoint_x > bg_x/2):
+            # 오른쪽 위
+            y = bg_inform['max_obj_bbox'][1] 
+            x = bg_inform['max_obj_bbox'][0] + bg_inform['max_obj_bbox'][2]
+            x = x - obj_x 
+            
+        # 검정박스 좌측 위 -> 좌측 위 코너에 맞춰야 함 
+        else:
+            # 좌측 위
+            y = bg_inform['max_obj_bbox'][1] 
+            x = bg_inform['max_obj_bbox'][0] 
+            
+        return x,y 
+    
     def __call__(self,obj_id,bg_id):
         self.obj_inform = self.image_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
         self.bg_inform  = self.image_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
@@ -194,13 +213,20 @@ class RoMixGen_Img:
         obj_img = Image.open(os.path.join(self.image_root,'obj',self.obj_inform['file_name'])).convert('RGB')
         bg_img  = Image.open(os.path.join(self.image_root,'bg',self.bg_inform['file_name'])).convert('RGB')
         
+        obj_img = Image.fromarray(self.__cut_obj__(self.obj_inform['max_obj_bbox'],obj_img)) # obj img cuttting 
+        
+        '''
         # Preprocess for obj,bg image 
         obj_img = self.__obj_pre__(obj_img)
         bg_img  = self.__bg_pre__(obj_img,bg_img)
+        '''
+        #get paste point and paste 
+        x,y = self.get_xy_point(bg_img,obj_img,self.bg_inform)
+        bg_img.paste(obj_img,(int(x),int(y)))
         
         # transforms after mix 
 
-        img = self.transform_after_mix(Image.fromarray(bg_img))
+        img = self.transform_after_mix(bg_img)
         return img 
     
 class RoMixGen_Txt:
