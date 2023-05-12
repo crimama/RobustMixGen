@@ -1,13 +1,11 @@
-import os 
-from PIL import Image 
-import json 
-import yaml 
-import pandas as pd 
+import json
 
-from torchvision import transforms 
+from PIL import Image
+from torchvision import transforms
 
-from augmentation.romixgen import RoMixGen_Img, RoMixGen_Txt,MiX
+from augmentation.romixgen import MiX, RoMixGen_Img, RoMixGen_Txt
 from dataset.randaugment import RandomAugment
+
 
 def create_romixgen(config):
     if config['hard_aug']:
@@ -27,22 +25,23 @@ def create_romixgen(config):
                                         ])
     
     
-    image_dict         = json.load(open(config['image_dict_file']))
-    obj_bg_dict        = json.load(open(config['obj_bg_dict_file']))
-    
-    
-    img_func = RoMixGen_Img(image_dict            = image_dict,
-                            image_root            = config['aug_image_root'],
-                            transform_after_mix   = transform_after_mix,
-                            resize_ratio          = config['romixgen_resize_ratio'])
+    #image_info_dict        = json.load(open(config['img_info_json']))
 
-    txt_func = RoMixGen_Txt(image_caption       = image_dict)
+    
+    img_func = RoMixGen_Img(image_root            = config['image_root'],
+                            transform_after_mix   = transform_after_mix,
+                            resize_ratio          = config['romixgen_resize_ratio'],
+                            img_mix               = config['romixgen_img_mix'],
+                            obj_bg_mix_ratio      = config['obj_bg_mix_ratio'],)
+
+    txt_func = RoMixGen_Txt()
          
-    romixgen = MiX( image_dict        = image_dict,
-                    obj_bg_dict       = obj_bg_dict,
-                    img_aug_function  = img_func,
-                    txt_aug_function  = txt_func,
-                    normal_image_root = config['image_root'],
-                    normal_transform  = transform_after_mix)
+    romixgen = MiX( image_info          = config['img_info_json'],
+                    img_aug_function    = img_func,
+                    txt_aug_function    = txt_func,
+                    obj_bg_threshold    = config['obj_bg_threshold'],
+                    bg_center_threshold = config['bg_center_threshold'],
+                    normal_image_root   = config['image_root'],
+                    normal_transform    = transform_after_mix)
     
     return romixgen

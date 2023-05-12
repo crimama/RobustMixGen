@@ -1,14 +1,15 @@
+import json
 import os
-import math
+import random
+
+import cv2
 import numpy as np
-from PIL import Image 
-import cv2 
-from dataset.utils import pre_caption
-import os
-from transformers import MarianMTModel, MarianTokenizer
-import random 
-import torch
 import torch.distributed as dist
+from PIL import Image
+from transformers import MarianMTModel, MarianTokenizer
+
+from dataset.utils import pre_caption
+
 
 def is_dist_avail_and_initialized():
     if not dist.is_available():
@@ -34,17 +35,99 @@ def is_main_process():
     return get_rank() == 0
 
 class MiX:
-    def __init__(self, image_dict, obj_bg_dict, img_aug_function, txt_aug_function, 
-                normal_image_root, normal_transform):
+    def __init__(self, image_info, img_aug_function, txt_aug_function,
+                  obj_bg_threshold, bg_center_threshold, 
+                  normal_image_root, normal_transform):
+        
         self.img_aug = img_aug_function
         self.txt_aug = txt_aug_function 
 
-        self.image_dict = image_dict 
-        self.obj_bg_dict = obj_bg_dict
+        self.image_info_dict, self.obj_bg_dict = self.romixgen_preset(
+            self.use_sub_dict_key(json.load( open(image_info, "r"),),["file_name", "width", "height", "max_obj_super_cat","max_obj_cat", "max_obj_area", "max_obj_midpoint", "max_obj_bbox", "max_obj_area_portion", "captions",],),
+            obj_bg_threshold,bg_center_threshold,)
+
+        self.img_aug.__get_dict__(
+            self.use_sub_dict_key(
+                self.image_info_dict, ["file_name", "max_obj_midpoint", "max_obj_bbox"]
+            )
+        )
+        self.txt_aug.__get_dict__(
+            self.use_sub_dict_key(
+                self.image_info_dict,
+                ["file_name", "max_obj_super_cat", "max_obj_cat", "captions"],
+            )
+        )
 
         self.normal_transform = normal_transform 
         self.normal_image_root = normal_image_root 
-    
+# json 파일에서 필요한 key만 뽑아서 사용
+    def use_sub_dict_key(self, dic: dict, key_to_use: list):
+        return_dic = {}
+        for item in dic:
+            for sub_item in dic[item]:
+                if sub_item in key_to_use:
+                    return_dic[item] = return_dic.get(item, {})
+                    return_dic[item][sub_item] = dic[item][sub_item]
+
+        return return_dic
+
+    # bg_center_threshold 이용하는 함수
+    def center_check(self, midpoint: list, width: int, height: int, thrs: float):
+        width_area = [0 + width * ((1 - thrs) / 2), width - width * ((1 - thrs) / 2)]
+        height_area = [
+            0 + height * ((1 - thrs) / 2),
+            height - height * ((1 - thrs) / 2),
+        ]
+        try:
+            if midpoint[0] > width_area[0] and midpoint[0] < width_area[1]:
+                if midpoint[1] > height_area[0] and midpoint[1] < height_area[1]:
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        except:
+            return False
+
+    # romixgen 적용한 dictionary를 만들어주는 함수
+    def romixgen_preset(
+        self, img_info_dict, obj_bg_threshold=0.01, bg_center_threshold=0.7
+    ):
+        seg_or_bbox = "bbox"
+        for key in img_info_dict.keys():
+            try:
+                #max_obj_area_portion = img_info_dict[key]["max_obj_area_portion"]
+                max_obj_midpoint = img_info_dict[key]["max_obj_midpoint"]
+                img_width, img_height = int(img_info_dict[key]["width"]), int(img_info_dict[key]["height"])
+                try:
+                    max_obj_area_portion = (img_info_dict[key]["max_obj_bbox"][2] * img_info_dict[key]["max_obj_bbox"][3])/(img_width * img_height)
+                except:
+                    max_obj_area_portion = None
+                img_info_dict[key]["mop"] = max_obj_area_portion
+                if max_obj_area_portion:
+                    img_info_dict[key].pop( "max_obj_segment_points", None ) if seg_or_bbox == "bbox" else img_info_dict[key].pop("max_obj_bbox", None)
+                    if (max_obj_area_portion > obj_bg_threshold):  # 물체가 이미지의 일정 비율 이상 차지하는 경우
+                        img_info_dict[key]["obj_bg"] = "obj"
+                    else:
+                        if self.center_check( max_obj_midpoint, img_width, img_height, bg_center_threshold):  # 빈 곳의 중심이 이미지의 중심에 가까운 경우
+                            img_info_dict[key]["obj_bg"] = "bg"
+                        else:  # 빈 곳의 중심이 이미지의 중심에 가깝지 않은 경우 (외곽에 위치한 경우)
+                            img_info_dict[key]["obj_bg"] = "unusable_bg"
+                else:  # max obj 비어있는 경우 (그냥 unusable bg로 저장)
+                    img_info_dict[key]["obj_bg"] = "unusable_bg"
+            except Exception as e:
+                print(f"Error processing image {img_info_dict[key]['file_name']}: {e}")
+        obj_bg_dict = {}
+
+        # obj,bg key를 가진 dictionary 생성
+        for key in img_info_dict.keys():
+            if img_info_dict[key]["obj_bg"] not in obj_bg_dict:
+                obj_bg_dict[img_info_dict[key]["obj_bg"]] = [key]
+            else:
+                obj_bg_dict[img_info_dict[key]["obj_bg"]].append(key)
+
+        return img_info_dict, obj_bg_dict
+
     def normal_load(self,ann):
         image_path = os.path.join(self.normal_image_root,ann['image'])
         image = Image.open(image_path).convert('RGB')
@@ -57,41 +140,55 @@ class MiX:
         txt = self.txt_aug(obj_id,bg_id)
         return img,txt 
     
-    def select_id(self,image_id,obj_bg):
-        if obj_bg =='obj':
-            obj_id = image_id 
+    def select_id(self, image_id, obj_bg):
+        if obj_bg == "obj":
+            obj_id = image_id
             bg_id = random.choice(self.obj_bg_dict["bg"])
-        elif obj_bg == 'bg': 
-            bg_id = image_id 
-            obj_id = random.choice(self.obj_bg_dict["obj"])        
-        else:
-            obj_id = random.choice(self.obj_bg_dict["obj"])        
-            bg_id = random.choice(self.obj_bg_dict["bg"])
-            
-        return obj_id, bg_id 
+        elif obj_bg == "bg":
+            bg_id = image_id
+            obj_id = random.choice(self.obj_bg_dict["obj"])
 
-    def __call__(self,ann): # ann  = image_caption[index] 
-        image_id = ann['image_id'].split('_')[-1]
-        self.image_id = image_id 
-        
+        return obj_id, bg_id
+    
+    def __call__(self, ann):  # ann  = image_caption[index]
+        image_id = ann["image_id"].split("_")[-1]
+        self.image_id = image_id
 
-        obj_id,bg_id = self.select_id(image_id,self.image_dict[image_id]['obj_bg'])
-        img,caption = self.mix(obj_id,bg_id)
-            
-        return img,caption
+        # Typeerror : #obj 혹은 bg에 bbox annotation 정보가 없는 경우
+        # ValueError : #objet image의 크기가 너무 커서 resize해도 bg로 들어가지 않는 경우
+        # UnboundLocalError: #obj 또는 bg 에 unusable_bg가 걸리는 경우
+
+        try:
+            obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
+            img, caption = self.mix(obj_id, bg_id)
+        except (TypeError, ValueError, UnboundLocalError):
+            try:
+                obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
+                img, caption = self.mix(obj_id, bg_id)
+            except (TypeError, ValueError, UnboundLocalError):
+                try:
+                    obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
+                    img, caption = self.mix(obj_id, bg_id)
+                except (TypeError, ValueError, UnboundLocalError):
+                    img, caption = self.normal_load(ann)  # self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨
+                    # caption = np.random.choice(caption,1)[0]
+        return img, caption
             
             
 
 class RoMixGen_Img:
-    def __init__(self,image_dict,image_root,transform_after_mix,resize_ratio=1):
-        # dataset json  
-        self.image_dict = image_dict 
-        
+    def __init__(self, image_root, transform_after_mix, resize_ratio=1, img_mix = False,  obj_bg_mix_ratio=0.5):
+    
         # Image 
-        self.image_root = image_root                   # preprocessed image for augmentation root 
+        self.image_root          = image_root                   # preprocessed image for augmentation root 
         self.transform_after_mix = transform_after_mix # transforms functions after augmentation 
-        self.resize_ratio = resize_ratio               # how large obj image resized 
-        
+        self.resize_ratio        = resize_ratio     
+        self.img_mix             = img_mix              # how large obj image resized 
+        self.img_mix_ratio       = obj_bg_mix_ratio                         # if True, mix image with image
+
+    def __get_dict__(self, img_info):
+        self.img_info_dict = img_info  # how large obj image resized   
+
     def bbox_point(self,bboxes):
         y_up = int(bboxes[1])
         y_down = y_up + int(bboxes[3])
@@ -99,79 +196,20 @@ class RoMixGen_Img:
         x_right = x_left + int(bboxes[2])
         return x_left,x_right,y_up,y_down
     
-    def __cut_obj__(self,bboxes,obj_img):
-        x_left,x_right,y_up,y_down = self.bbox_point(bboxes)
-        obj_img = np.array(obj_img)[y_up:y_down,x_left:x_right,:]
-        return obj_img 
-    '''
-    def __obj_pre__(self,obj_img):
-        #! obj img 
-        # obj 이미지 cutting 
-        bboxes = self.obj_inform['max_obj_bbox'] # obj image 정보 중 max obj bbox 가져 옴 
-        obj_img = self.__cut_obj__(bboxes,obj_img) # bbox 정보로 이미지 cut 
-        
-        #배경 이미지의 bbox 포인트 값 및 width, height 계산 
-        bg_bboxes = self.bg_inform['max_obj_bbox']
-        bg_x_left,bg_x_right,bg_y_up,bg_y_down = self.bbox_point(bg_bboxes)
-
-        width = bg_x_right - bg_x_left
-        height = bg_y_down - bg_y_up 
-
-        #resize 기준 및 length 계산 
-        length = {'w_h':'height','length':height} if obj_img.shape[0] < obj_img.shape[1] else {'w_h':'width','length':width}
-        
-        #resize 기준 대비 다른 길이 비율 계산 
-        obj_ratio = obj_img.shape[0] / obj_img.shape[1] #height / width 
-        #resize 
-        if length['w_h'] == 'height': # height 
-            dsize = (int(length['length']/obj_ratio*self.resize_ratio),int(length['length']*self.resize_ratio))
-            obj_img = cv2.resize(obj_img,dsize=(dsize))
-        else:                         # width 
-            dsize = (int(length['length']*self.resize_ratio),int(length['length']*obj_ratio*self.resize_ratio))
-            obj_img = cv2.resize(obj_img,dsize=(dsize))
-        return obj_img 
-        
-    def __bg_pre__(self,obj_img,bg_img):
-        bg_img = np.array(bg_img)
-        
-        # boj 이미지의 width, height 계산 
-        height = obj_img.shape[0]
-        width = obj_img.shape[1]
-        
-        # 배경 이미지의 mid point랑 obj 이미지의 shape으로 붙일 영역 계산
-        mid_x = int(self.bg_inform['max_obj_midpoint'][0])
-        mid_y = int(self.bg_inform['max_obj_midpoint'][1])
-
-        x_left = mid_x - math.ceil(width/2)
-        x_right = mid_x + int(width/2)
-
-        y_up = mid_y - math.ceil(height/2)
-        y_down = mid_y + int(height/2)
-        
-                
-        # 배경 벗어나는 것 보정 
-        if y_up <0:
-            y_down = y_down - y_up
-            y_up = y_up - y_up
-
-        if y_down > bg_img.shape[0]:
-            move_length = y_down - bg_img.shape[0]
-            y_up,y_down = y_up - move_length, y_down - move_length  
-            
-        if x_left < 0:
-            x_left,x_right = x_right-x_left,x_left-x_left
-            
-        if x_right > bg_img.shape[1]:
-            move_length = x_right - bg_img.shape[1]
-            x_left,x_right = x_left-move_length,x_right-move_length
-
-        # 배경에 obj 이미지 paste 
-        bg_img[y_up:y_down,x_left:x_right,:] = 0 
-        bg_img[y_up:y_down,x_left:x_right,:] = obj_img
-        
-        return bg_img 
-    '''        
+    def __cut_obj__(self, bboxes, obj_img, obj_bg:str):
+        x_left, x_right, y_up, y_down = self.bbox_point(bboxes)
+        if obj_bg == "obj":
+            result = np.array(obj_img)[y_up:y_down,x_left:x_right,:]
+        elif obj_bg == "bg":
+            result = np.array(obj_img)
+            result[y_up:y_down,x_left:x_right,:] = 0
+        return result 
     
+    def __paste_obj__(self, bboxes, bg_img, obj_img):
+        x_left, x_right, y_up, y_down = self.bbox_point(bboxes)
+        bg_img[y_up:y_down, x_left:x_right, :] = obj_img
+        return bg_img
+       
     def get_xy_point(self,bg_img,obj_img,bg_inform):
         (bg_y,bg_x,_) = np.array(bg_img).shape
         (obj_y,obj_x,_) = np.array(obj_img).shape
@@ -205,50 +243,55 @@ class RoMixGen_Img:
             
         return x,y 
     
+    def __resize__(self, obj_img, bg_img, size=(384,384)):
+        # img resize
+        width_ratio, height_ratio = size[0] / obj_img.shape[1], size[1] / obj_img.shape[0]
+        obj_img = cv2.resize(obj_img, size, interpolation=cv2.INTER_CUBIC)
+        bg_img = cv2.resize(bg_img, size, interpolation=cv2.INTER_CUBIC)
+        resized_bbox = [self.obj_inform["max_obj_bbox"][0] * width_ratio, self.obj_inform["max_obj_bbox"][1] * height_ratio, self.obj_inform["max_obj_bbox"][2] * width_ratio, self.obj_inform["max_obj_bbox"][3] * height_ratio]
+        return obj_img, bg_img, resized_bbox
+    
     def __call__(self,obj_id,bg_id):
-        self.obj_inform = self.image_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
-        self.bg_inform  = self.image_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
+        self.obj_inform = self.img_info_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
+        self.bg_inform  = self.img_info_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
         
-        # image open 
-        obj_img = Image.open(os.path.join(self.image_root,'obj',self.obj_inform['file_name'])).convert('RGB')
-        bg_img  = Image.open(os.path.join(self.image_root,'bg',self.bg_inform['file_name'])).convert('RGB')
+        # image open with cv2 and resize to 384*384
         
-        obj_img = Image.fromarray(self.__cut_obj__(self.obj_inform['max_obj_bbox'],obj_img)) # obj img cuttting 
-        
-        '''
-        # Preprocess for obj,bg image 
-        obj_img = self.__obj_pre__(obj_img)
-        bg_img  = self.__bg_pre__(obj_img,bg_img)
-        '''
-        #get paste point and paste 
-        x,y = self.get_xy_point(bg_img,obj_img,self.bg_inform)
-        bg_img.paste(obj_img,(int(x),int(y)))
-        
-        # transforms after mix 
+        if self.img_mix:
+            obj_img = cv2.imread(os.path.join(self.image_root, self.obj_inform['file_name']))
+            bg_img  = cv2.imread(os.path.join(self.image_root, self.bg_inform['file_name']))
+            obj_img, bg_img = cv2.cvtColor(obj_img, cv2.COLOR_BGR2RGB), cv2.cvtColor(bg_img, cv2.COLOR_BGR2RGB)
+            # 불러오기 완료
+            # 배경 이미지에서 obj가 있는 부분을 잘라냄
+            bg_img =  self.__cut_obj__(self.bg_inform["max_obj_bbox"], bg_img, "bg")
+            obj_img, bg_img, obj_bbox = self.__resize__(obj_img, bg_img,(512,512))
+            obj_img_obj = self.__cut_obj__(obj_bbox, obj_img, "obj")
+            obj_img_bg = self.__cut_obj__(obj_bbox, obj_img, "bg")
 
-        img = self.transform_after_mix(bg_img)
+            img = (1 - self.img_mix_ratio) * obj_img_bg + self.img_mix_ratio * bg_img
+            #regularization
+            img = self.__paste_obj__(obj_bbox, img, obj_img_obj)
+            # numpy array to PIL image
+            img = Image.fromarray(img.astype(np.uint8))
+            img = self.transform_after_mix(img)
+
+        else:
+            obj_img = Image.open(os.path.join(self.image_root, self.obj_inform['file_name'])).convert('RGB')
+            bg_img  = Image.open(os.path.join(self.image_root, self.bg_inform['file_name'])).convert('RGB')
+            x,y = self.get_xy_point(bg_img,obj_img,self.bg_inform)
+            bg_img.paste(obj_img,(int(x),int(y)))
+            img = self.transform_after_mix(bg_img)
         return img 
+
+
+        
     
 class RoMixGen_Txt:
-    def __init__(self, image_caption, first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
-        
-        # self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
-        # self.first_model            = MarianMTModel.from_pretrained(first_model_name)
-        # self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
-        # self.second_model           = MarianMTModel.from_pretrained(second_model_name)
+    def __init__(self): 
+        pass
 
-        self.image_caption          = image_caption
-        
-        
-    # def back_translate(self,text):
-    #     first_formed_text           = f">>fr<< {text}"
-    #     first_translated            = self.first_model.generate(**self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True))
-    #     first_translated_text       = self.first_model_tokenizer.decode(first_translated[0], skip_special_tokens=True)
-    #     second_formed_text          = f">>en<< {first_translated_text}"
-    #     second_translated           = self.second_model.generate(**self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True))
-    #     second_translated_text      = self.second_model_tokenizer.decode(second_translated[0], skip_special_tokens=True)
-        
-    #     return second_translated_text
+    def __get_dict__(self, img_info):
+        self.img_info_dict = img_info
     
     def replace_word(self,captions,bg_cats,obj_cats):
         caption = np.random.choice(captions,1)[0]
@@ -271,10 +314,10 @@ class RoMixGen_Txt:
         return caption 
 
     def __call__(self,obj_id,bg_id):
-        
-        obj_cat = self.image_caption[obj_id]["max_obj_cat"] + self.image_caption[obj_id]["max_obj_super_cat"]
-        bg_cat = self.image_caption[bg_id]["max_obj_cat"] + self.image_caption[bg_id]["max_obj_super_cat"]
-        bg_caption = self.image_caption[bg_id]["captions"]
+        #return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
+        obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
+        bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
+        bg_caption = self.img_info_dict[bg_id]["captions"]
         self.bg_cat = bg_cat
         self.bg_caption = bg_caption 
         self.obj_cat = obj_cat 
