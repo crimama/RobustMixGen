@@ -312,16 +312,23 @@ class RoMixGen_Txt:
         except IndexError:
             caption = random.choice(obj_cats) + " " + caption
         return caption 
+    def mix_caption (self, obj_cap, bg_cap, obj_cat, bg_cat):
+        obj_cap = obj_cap.lower()
+        bg_cap = bg_cap.lower()
+        obj_cap = obj_cap.replace(obj_cat, bg_cat)
+        return obj_cap + " " + bg_cap
 
     def __call__(self,obj_id,bg_id):
-        #return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
+        return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
         obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
         bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
+        obj_caption = self.img_info_dict[obj_id]["captions"]
         bg_caption = self.img_info_dict[bg_id]["captions"]
         self.bg_cat = bg_cat
         self.bg_caption = bg_caption 
         self.obj_cat = obj_cat 
-        new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
+        new_caption = self.mix_caption(obj_caption,bg_caption,obj_cat,bg_cat)
+        #new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
         
         """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
         bg_tok = self.first_model_tokenizer.encode(bg_caption)   # caption to token 
