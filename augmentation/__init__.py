@@ -3,7 +3,7 @@ import json
 from PIL import Image
 from torchvision import transforms
 
-from augmentation.romixgen import MiX, RoMixGen_Img, RoMixGen_Txt
+from .romixgen import MiX, RoMixGen_Img, RoMixGen_Txt
 from dataset.randaugment import RandomAugment
 
 

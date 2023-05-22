@@ -2,18 +2,30 @@
 #python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain.py --config ./configs/Pretrain.yaml 
 
 # #! Image Retrieval - coco 
-# CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
-#     --config ./configs/Retrieval_coco_mixgen.yaml --output_dir output/Retrieval_coco_mixgen_full \
-#     --checkpoint ./output/Pretrain/ALBEF.pth
+#CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
+#    --config ./configs/Retrieval_coco_baseline.yaml --output_dir output/Retrieval_coco_baseline_4m \
+#    --checkpoint ./output/Pretrain/ALBEF_4M.pth
+
+#CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
+#    --config ./configs/Retrieval_coco_romix.yaml --output_dir output/Retrieval_coco_romixgen_backtrans_4m_fix2 \
+#    --checkpoint ./output/Pretrain/ALBEF_4M.pth
+
+#CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
+#    --config ./configs/Retrieval_coco_romix_noback.yaml --output_dir output/Retrieval_coco_romixgen_replace_4m_fix2 \
+#    --checkpoint ./output/Pretrain/ALBEF_4M.pth
+
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
+    --config ./configs/Retrieval_coco_romix.yaml --output_dir output/Retrieval_coco_romixgen_mixup_textconcat_ratio05_4m_fix2 \
+    --checkpoint ./output/Pretrain/ALBEF_4M.pth  --evaluate 
 
 #CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
 #    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_0.0001_romix_test \
 #    --checkpoint ./output/Pretrain/ALBEF.pth
 
-CUDA_VISIBLE_DEVICES=0 python Retrieval.py \
-    --config ./configs/Retrieval_coco_romix.yaml --output_dir output/Retrieval_coco_romix_woojun_test \
-    --checkpoint ./output/Pretrain/ALBEF_4m.pth
-    
+CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
+    --config ./configs/Retrieval_coco_small_romix.yaml --output_dir output/Retrieval_coco_small_0.0001_romix_test \
+    --checkpoint ./output/Pretrain/ALBEF.pth
+
 #! Image Retrieval eval - coco 
 #  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
 #      --config ./configs/Retrieval_coco.yaml --output_dir output/Retrieval_coco \

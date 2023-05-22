@@ -8,8 +8,29 @@ import torch.distributed as dist
 from PIL import Image
 from transformers import MarianMTModel, MarianTokenizer
 
-from dataset.utils import pre_caption
+import re 
 
+def pre_caption(caption,max_words):
+    caption = re.sub(
+        r"([,.'!?\"()*#:;~])",
+        '',
+        caption.lower(),
+    ).replace('-', ' ').replace('/', ' ').replace('<person>', 'person')
+
+    caption = re.sub(
+        r"\s{2,}",
+        ' ',
+        caption,
+    )
+    caption = caption.rstrip('\n') 
+    caption = caption.strip(' ')
+
+    #truncate caption
+    caption_words = caption.split(' ')
+    if len(caption_words)>max_words:
+        caption = ' '.join(caption_words[:max_words])
+            
+    return caption
 
 def is_dist_avail_and_initialized():
     if not dist.is_available():
@@ -147,6 +168,9 @@ class MiX:
         elif obj_bg == "bg":
             bg_id = image_id
             obj_id = random.choice(self.obj_bg_dict["obj"])
+        else:
+            bg_id = random.choice(self.obj_bg_dict["bg"])
+            obj_id = random.choice(self.obj_bg_dict["obj"])
 
         return obj_id, bg_id
     
@@ -158,20 +182,12 @@ class MiX:
         # ValueError : #objet image의 크기가 너무 커서 resize해도 bg로 들어가지 않는 경우
         # UnboundLocalError: #obj 또는 bg 에 unusable_bg가 걸리는 경우
 
-        try:
-            obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
-            img, caption = self.mix(obj_id, bg_id)
-        except (TypeError, ValueError, UnboundLocalError):
-            try:
-                obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
-                img, caption = self.mix(obj_id, bg_id)
-            except (TypeError, ValueError, UnboundLocalError):
-                try:
-                    obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
-                    img, caption = self.mix(obj_id, bg_id)
-                except (TypeError, ValueError, UnboundLocalError):
-                    img, caption = self.normal_load(ann)  # self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨
-                    # caption = np.random.choice(caption,1)[0]
+#        try:
+        obj_id, bg_id = self.select_id(image_id, self.image_info_dict[image_id]["obj_bg"])
+        img, caption = self.mix(obj_id, bg_id)
+#        except:
+#            img, caption = self.normal_load(ann)  # self.ann 에 들어있는 ann은 caption이 한개씩 있어서 random choice 하지 않아도 됨
+
         return img, caption
             
             
@@ -181,10 +197,10 @@ class RoMixGen_Img:
     
         # Image 
         self.image_root          = image_root                   # preprocessed image for augmentation root 
-        self.transform_after_mix = transform_after_mix # transforms functions after augmentation 
+        self.transform_after_mix = transform_after_mix          # transforms functions after augmentation 
         self.resize_ratio        = resize_ratio     
-        self.img_mix             = img_mix              # how large obj image resized 
-        self.img_mix_ratio       = obj_bg_mix_ratio                         # if True, mix image with image
+        self.img_mix             = img_mix                      # how large obj image resized 
+        self.img_mix_ratio       = obj_bg_mix_ratio             # if True, mix image with image
 
     def __get_dict__(self, img_info):
         self.img_info_dict = img_info  # how large obj image resized   
@@ -289,73 +305,35 @@ class RoMixGen_Img:
 class RoMixGen_Txt:
     def __init__(self): 
         pass
-
+    
     def __get_dict__(self, img_info):
         self.img_info_dict = img_info
     
     def replace_word(self,captions,bg_cats,obj_cats):
         caption = np.random.choice(captions,1)[0]
-        '''
-        replaced = False 
-        for bg_cat, obj_cat in zip(bg_cats,obj_cats):
-            if bg_cat in caption:
-                caption = caption.replace(bg_cat, obj_cat)
-                print('True')
-                replaced = True 
-                break
-        if not replaced:
-            caption = random.choice(obj_cats) + " " + caption
-        '''
         try:
             (bg_cat_id, bg_cat) = list(filter(lambda x : x[1] in caption.lower(), enumerate(bg_cats)))[0]
             caption = caption.lower().replace(bg_cat,obj_cats[bg_cat_id]).capitalize()
         except IndexError:
             caption = random.choice(obj_cats) + " " + caption
         return caption 
-    def mix_caption (self, obj_cap, bg_cap, obj_cat, bg_cat):
-        obj_cap = obj_cap.lower()
-        bg_cap = bg_cap.lower()
-        obj_cap = obj_cap.replace(obj_cat, bg_cat)
-        return obj_cap + " " + bg_cap
+    
+    def naive_concat(self,obj_caption,bg_caption):
+        text = np.random.choice([a + ' ' + b for a,b in zip(bg_caption,obj_caption)])
+        return text 
 
     def __call__(self,obj_id,bg_id):
-        return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
+        #return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
         obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
         bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
-        obj_caption = self.img_info_dict[obj_id]["captions"]
         bg_caption = self.img_info_dict[bg_id]["captions"]
+        obj_caption = self.img_info_dict[obj_id]['captions']
         self.bg_cat = bg_cat
         self.bg_caption = bg_caption 
         self.obj_cat = obj_cat 
-        new_caption = self.mix_caption(obj_caption,bg_caption,obj_cat,bg_cat)
+        self.obj_caption = obj_caption
         #new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
+        new_caption = self.naive_concat(obj_caption,bg_caption)
         
-        """obj_tok = self.first_model_tokenizer.encode(obj_caption) # caption to token 
-        bg_tok = self.first_model_tokenizer.encode(bg_caption)   # caption to token 
-        
-        concat_token = obj_tok[:2] + bg_tok[2:] # concat two caption naively 
-        concat_text = self.first_model_tokenizer.decode(concat_token, skip_special_tokens=True) # token to caption """
-        #backtranslated_text = self.back_translate(new_caption) # Eng - Fren - Eng
-        
-        #return backtranslated_text # return all 5 captions, 
+
         return new_caption
-                    
-                    
-class BackTranslation:
-    def __init__(self,device,first_model_name = 'Helsinki-NLP/opus-mt-en-fr',second_model_name = 'Helsinki-NLP/opus-mt-fr-en'):
-        self.first_model_tokenizer  = MarianTokenizer.from_pretrained(first_model_name)
-        self.first_model            = MarianMTModel.from_pretrained(first_model_name).to(device)
-        self.second_model_tokenizer = MarianTokenizer.from_pretrained(second_model_name)
-        self.second_model           = MarianMTModel.from_pretrained(second_model_name).to(device)
-        self.device = device
-        
-    def __call__(self,text):
-        first_formed_text           = [f">>fr<< {text}" for text in list(text)]
-        first_token                 = self.first_model_tokenizer(first_formed_text, return_tensors="pt", padding=True).to(self.device)
-        first_translated            = self.first_model.generate(**first_token)
-        first_translated_text       = self.first_model_tokenizer.batch_decode(first_translated, skip_special_tokens=True)
-        second_formed_text          = [f">>en<< {text}" for text in list(first_translated_text)]
-        second_token                = self.second_model_tokenizer(second_formed_text, return_tensors="pt", padding=True).to(self.device)
-        second_translated           = self.second_model.generate(**second_token)
-        second_translated_text      = self.second_model_tokenizer.batch_decode(second_translated, skip_special_tokens=True)
-        return second_translated_text                
