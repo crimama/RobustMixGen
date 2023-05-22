@@ -1,14 +1,16 @@
 import json
 import os
 import random
-
+import numpy as np 
+import cv2     
 from torch.utils.data import Dataset
+import torch 
 
 from PIL import Image
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None
-
+from torchvision import transforms 
 from dataset.utils import pre_caption
 
 '''
@@ -117,7 +119,52 @@ class re_eval_dataset(Dataset):
         image = self.transform(image)  
 
         return image, index
-      
+    
+
+class re_eval_perturb_dataset(Dataset):
+    def __init__(self, ann_file, img_size,pertur, image_root, max_words=30):        
+        self.ann = json.load(open(ann_file,'r'))
+        self.image_root = image_root
+        self.max_words = max_words 
+        self.img_size = img_size 
+        self.pertur = pertur 
+        self.transforms = self.get_transforms()
+        self.text = []
+        self.image = []
+        self.txt2img = {}
+        self.img2txt = {}
+        
+        txt_id = 0
+        for img_id, ann in enumerate(self.ann):
+            self.image.append(ann['image'])
+            self.img2txt[img_id] = []
+            for i, caption in enumerate(ann['caption']):
+                self.text.append(pre_caption(caption,self.max_words))
+                self.img2txt[img_id].append(txt_id)
+                self.txt2img[txt_id] = img_id
+                txt_id += 1
+                                    
+    def __len__(self):
+        return len(self.image)
+    
+    def get_transforms(self):
+        normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        test_transform      = transforms.Compose([
+                                                transforms.Resize((self.img_size,self.img_size),interpolation=Image.BICUBIC),
+                                                transforms.ToTensor(),
+                                                normalize,
+                                                ])
+        return test_transform 
+    
+    def __getitem__(self, index):    
+        
+        image_path = os.path.join(self.image_root, self.ann[index]['image'])        
+        image = Image.open(image_path).convert('RGB')
+
+        image = self.pertur(np.array(image),severity=2).astype(np.uint8)
+        image = self.transforms(Image.fromarray(image).convert('RGB'))
+        return image, index
+           
         
 
 class pretrain_dataset(Dataset):
@@ -144,7 +191,7 @@ class pretrain_dataset(Dataset):
       
         image = Image.open(ann['image']).convert('RGB')   
         image = self.transform(image)
-                
+        
         return image, caption
             
 
