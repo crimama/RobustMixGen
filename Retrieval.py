@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore")
 import argparse
 import os
 import ruamel.yaml as yaml
@@ -27,9 +29,10 @@ from optim import create_optimizer
 
 from augmentation import mixgen as mg 
 import nlpaug.augmenter.word as naw
+from lavis.models import load_model_and_preprocess
 
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans):
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans,caption_model):
     # train
     model.train()  
     
@@ -38,17 +41,18 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Train Epoch: [{}]'.format(epoch)
-    print_freq = 50
+    print_freq = 10
     step_size = 100
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        if config['mixgen']:
-            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
+#        if config['mixgen']:
+#            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
         if config['backtrans']:
             text = backtrans.augment(text)
-        
-        
+        if config['captioning']:
+            image = image.to(device,non_blocking=True)   
+            text = caption_model.generate({"image":image})                
         
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
@@ -267,7 +271,17 @@ def main(args, config):
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
     
-    backtrans = naw.BackTranslationAug(device=device)
+    if config['backtrans']:
+        print("backtranslation model loaded")
+        backtrans = naw.BackTranslationAug(device=device)
+    else:
+        backtrans=None 
+        
+    if config['captioning']:
+        print("caption model loaded")
+        caption_model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+    else:
+        caption_model = None 
 
     #### wandb logging #### 
     if utils.is_main_process(): 
@@ -316,14 +330,14 @@ def main(args, config):
     warmup_steps = config['schedular']['warmup_epochs']
     best = 0
     best_epoch = 0
-
+    ## Train ## 
     print("Start training")
     start_time = time.time()    
     for epoch in range(0, max_epoch):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb,backtrans)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb,backtrans,caption_model)  
         
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
