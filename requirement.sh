@@ -12,3 +12,5 @@ cd cocoapi/PythonAPI
 make
 
 pip install sentencepiece
+pip install Wand
+apt-get install libmagickwand-dev
