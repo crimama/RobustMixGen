@@ -1,29 +1,31 @@
 import warnings
 warnings.filterwarnings("ignore")
 import argparse
-import os
-import ruamel.yaml as yaml
-import numpy as np
-import random
-import time
 import datetime
 import json
+import os
+import random
+import time
 from pathlib import Path
 
+import nlpaug.augmenter.word as naw
+import numpy as np
+import ruamel.yaml as yaml
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
+import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
-from models.model_retrieval import ALBEF
-from models.vit import interpolate_pos_embed
-from models.tokenization_bert import BertTokenizer
-import wandb 
-
 import utils
-from dataset import create_dataset, create_sampler, create_loader
+import wandb
+from augmentation import mixgen as mg
+from dataset import create_dataset, create_loader, create_sampler
+from models.model_retrieval import ALBEF
+from models.tokenization_bert import BertTokenizer
+from models.vit import interpolate_pos_embed
+from optim import create_optimizer
 from scheduler import create_scheduler
 from optim import create_optimizer
 
@@ -287,7 +289,7 @@ def main(args, config):
     if utils.is_main_process(): 
         import pytz 
         config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-        wandb.init(project='Romixgen',name=args.output_dir.split('/')[-1],config=config)
+        wandb.init(project='Romixgen_woojun0510',name=args.output_dir.split('/')[-1],config=config)
     
     #### Model #### 
     print("Creating model")
@@ -408,7 +410,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', default=42, type=int)
     parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
     parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    parser.add_argument('--distributed', default=True, type=bool)
+    parser.add_argument('--distributed', default=False, type=bool)
     args = parser.parse_args()
 
     config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
