@@ -1,6 +1,7 @@
 import json
 import os
 import random
+from itertools import chain    
 
 import cv2
 import numpy as np
@@ -166,7 +167,7 @@ class MiX:
             obj_id = image_id
             bg_id = random.choice(self.obj_bg_dict["bg"])
         elif obj_bg == "bg":
-            bg_id = image_id
+            bg_id = image_id 
             obj_id = random.choice(self.obj_bg_dict["obj"])
         else:
             bg_id = random.choice(self.obj_bg_dict["bg"])
@@ -321,19 +322,52 @@ class RoMixGen_Txt:
     def naive_concat(self,obj_caption,bg_caption):
         text = np.random.choice([a + ' ' + b for a,b in zip(bg_caption,obj_caption)])
         return text 
+    
+    def conjunction_concat(self,obj_caption,bg_caption):
+        conjunction_list = ['and', 'also', 'as well as', 'moreover', 'furthermore', 'in addition', 'besides', 'similarly', 'likewise', 'consequently', 'therfore', 'thus', 'hence']
+        conjunction = np.random.choice(conjunction_list)
+        text = np.random.choice([a + ' ' +conjunction+' '+ b for a,b in zip(bg_caption,obj_caption)])
+        return text 
+    
+    def mix_concat(self,obj_caption,bg_caption):
+        obj_cap, bg_cap = np.random.choice(obj_caption), np.random.choice(bg_caption)
+        obj_cap_split = [obj_cap.split(" ")[i:i+3] for i in range(0, len(obj_cap.split(" ")), 3)]
+        bg_cap_split = [bg_cap.split(" ")[i:i+3] for i in range(0, len(bg_cap.split(" ")), 3)]
+
+        result = [x for pair in zip(obj_cap_split, bg_cap_split) for x in pair] + obj_cap_split[len(bg_cap_split):] + bg_cap_split[len(obj_cap_split):]
+        result = " ".join(item for sublist in result for item in sublist)
+        return result
+    
+    def shuffle_txt(self,txt1,txt2):
+        txt1 = txt1.split(' ')
+        txt2 = txt2.split(' ')
+        new_txt = list(chain(*zip(txt1,txt2)))
+        
+        if len(txt1) > len(txt2):
+            new_txt = " ".join(new_txt + txt1[int(len(new_txt)/2):])
+        
+        elif len(txt2) > len(txt1):
+            new_txt = " ".join(new_txt + txt2[int(len(new_txt)/2):])
+        else:
+            new_txt = " ".join(new_txt)
+            
+        return new_txt
+    
+    
 
     def __call__(self,obj_id,bg_id):
         #return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
         obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
         bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
         bg_caption = self.img_info_dict[bg_id]["captions"]
-        obj_caption = self.img_info_dict[obj_id]['captions']
+        obj_caption = self.img_info_dict[obj_id]['captions'] 
         self.bg_cat = bg_cat
         self.bg_caption = bg_caption 
         self.obj_cat = obj_cat 
         self.obj_caption = obj_caption
-        #new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
-        new_caption = self.naive_concat(obj_caption,bg_caption)
-        
-
+        #new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)   #! replace 
+        #new_caption = self.naive_concat(obj_caption,bg_caption)        #! concat 
+        #new_caption = self.conjunction_concat(obj_caption,bg_caption) #! conjconcat 
+        #new_caption = np.random.choice([self.shuffle_txt(bg,obj) for bg,obj in zip(bg_caption,obj_caption)]) #! shuffle
+        new_caption = self.mix_concat(obj_caption,bg_caption)           #!mix concat 
         return new_caption
