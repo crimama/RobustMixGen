@@ -37,10 +37,10 @@ def create_dataset(dataset, config):
                                             normalize,
                                             ])  
     test_transform      = transforms.Compose([
-                                            transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
-                                            transforms.ToTensor(),
-                                            normalize,
-                                            ])
+                                                transforms.Resize((config['image_res'],config['image_res']),interpolation=Image.BICUBIC),
+                                                transforms.ToTensor(),
+                                                normalize,
+                                                ])
     
     # 
     romixgen = create_romixgen(config)
@@ -55,11 +55,11 @@ def create_dataset(dataset, config):
         train_dataset = re_train_dataset(ann_file      = config['train_file'],
                                         transform      = train_transform,
                                         image_root     = config['image_root'],
-                                        romixgen       = romixgen, 
-                                        romixgen_true  = config['romixgen'],
-                                        romixgen_ratio = config['romixgen_ratio'] # hyper parameter 확률 0 ~ 1값 
+                                        romixgen       = romixgen,                # romixgen object 
+                                        romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
+                                        romixgen_ratio = config['romixgen']['base']['romixgen_ratio'] # probability for augmentation 
                                         )
-        val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root'])  
+        val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root']) 
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset   
 
