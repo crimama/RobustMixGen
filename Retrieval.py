@@ -29,7 +29,7 @@ from optim import create_optimizer
 
 from augmentation import mixgen as mg 
 import nlpaug.augmenter.word as naw
-from lavis.models import load_model_and_preprocess
+from lavis.models import load_model_and_preprocess as create_caption_model
 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans,caption_model):
@@ -41,16 +41,19 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     header = 'Train Epoch: [{}]'.format(epoch)
-    print_freq = 10
+    print_freq = 50
     step_size = 100
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-#        if config['mixgen']:
-#            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
-        if config['backtrans']:
+        
+        if config['mixgen']:
+            image, text = mg.mixgen(image, text, num=config['mixgen_num'])
+            
+        if config['romixgen']['text']['backtrans']:
             text = backtrans.augment(text)
-        if config['captioning']:
+            
+        if config['romixgen']['text']['method'] == 'captioning':
             image = image.to(device,non_blocking=True)   
             text = caption_model.generate({"image":image})                
         
@@ -271,15 +274,15 @@ def main(args, config):
        
     tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
     
-    if config['backtrans']:
+    if config['romixgen']['text']['backtrans']:
         print("backtranslation model loaded")
         backtrans = naw.BackTranslationAug(device=device)
     else:
         backtrans=None 
         
-    if config['captioning']:
+    if config['romixgen']['text']['method'] == 'captioning':
         print("caption model loaded")
-        caption_model, vis_processors, _ = load_model_and_preprocess(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
+        caption_model, vis_processors, _ = create_caption_model(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
     else:
         caption_model = None 
 
