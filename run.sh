@@ -15,8 +15,8 @@
 #    --checkpoint ./output/Pretrain/ALBEF_4M.pth
 
 CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
-    --config ./configs/Retrieval_coco_romix.yaml --output_dir output/Retrieval_coco_romixgen_mixup_textconcat_ratio05_4m_fix2 \
-    --checkpoint ./output/Pretrain/ALBEF_4M.pth  --evaluate 
+    --config ./configs/Retrieval_coco_romix.yaml --output_dir output/Retrieval_coco_cutmixup_conjconcat_hardaug_txtaug_ratio05_4m_fix2 \
+    --checkpoint ./output/Pretrain/ALBEF_4M.pth  
 
 
 #CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
