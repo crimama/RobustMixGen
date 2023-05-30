@@ -291,36 +291,16 @@ class RoMixGen_Img:
             img = Image.fromarray(img.astype(np.uint8))
             img = self.transform_after_mix(img)
 
-        else:
-            obj_img = Image.open(os.path.join(self.image_root, self.obj_inform['file_name'])).convert('RGB')
-            bg_img  = Image.open(os.path.join(self.image_root, self.bg_inform['file_name'])).convert('RGB')
-            x,y = self.get_xy_point(bg_img,obj_img,self.bg_inform)
-            bg_img.paste(obj_img,(int(x),int(y)))
-            img = self.transform_after_mix(bg_img)
-        return img 
+        else:        return text
 
+    def mix_concat(self,obj_caption,bg_caption):
+        obj_cap, bg_cap = np.random.choice(obj_caption), np.random.choice(bg_caption)
+        obj_cap_split = [obj_cap.split(" ")[i:i+3] for i in range(0, len(obj_cap.split(" ")), 3)]
+        bg_cap_split = [bg_cap.split(" ")[i:i+3] for i in range(0, len(bg_cap.split(" ")), 3)]
 
-        
-    
-class RoMixGen_Txt:
-    def __init__(self): 
-        pass
-    
-    def __get_dict__(self, img_info):
-        self.img_info_dict = img_info
-    
-    def replace_word(self,captions,bg_cats,obj_cats):
-        caption = np.random.choice(captions,1)[0]
-        try:
-            (bg_cat_id, bg_cat) = list(filter(lambda x : x[1] in caption.lower(), enumerate(bg_cats)))[0]
-            caption = caption.lower().replace(bg_cat,obj_cats[bg_cat_id]).capitalize()
-        except IndexError:
-            caption = random.choice(obj_cats) + " " + caption
-        return caption 
-    
-    def naive_concat(self,obj_caption,bg_caption):
-        text = np.random.choice([a + ' ' + b for a,b in zip(bg_caption,obj_caption)])
-        return text 
+        result = [x for pair in zip(obj_cap_split, bg_cap_split) for x in pair] + obj_cap_split[len(bg_cap_split):] + bg_cap_split[len(obj_cap_split):]
+        result = " ".join(item for sublist in result for item in sublist)
+        return result
 
     def __call__(self,obj_id,bg_id):
         #return self.img_info_dict[bg_id]["captions"][0] + " " + self.img_info_dict[obj_id]["captions"][0]
@@ -333,7 +313,7 @@ class RoMixGen_Txt:
         self.obj_cat = obj_cat 
         self.obj_caption = obj_caption
         #new_caption = self.replace_word(bg_caption, bg_cat, obj_cat)
-        new_caption = self.naive_concat(obj_caption,bg_caption)
-        
+        #new_caption = self.naive_concat(obj_caption,bg_caption)
+        new_caption = self.mix_concat(obj_caption,bg_caption)
 
         return new_caption
