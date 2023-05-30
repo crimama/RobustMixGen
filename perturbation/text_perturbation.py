@@ -224,11 +224,12 @@ def char_delete(sentence,alpha=0.1): #! delete
 def backtrans(sentence):
     return sentence 
 
-method_chunk = [word_synonym_replacement,word_insertion,word_swap,word_deletion,word_insert_punctuation,
-                char_keyboard,char_ocr,char_insert,char_substitute,char_swap,char_delete,'style_former','style_casual','style_passive','style_active','backtrans']
+#method_chunk = [word_synonym_replacement,word_insertion,word_swap,word_deletion,word_insert_punctuation,
+#                char_keyboard,char_ocr,char_insert,char_substitute,char_swap,char_delete,'style_former','style_casual','style_passive','style_active','backtrans']
 
-train_chunk = [word_synonym_replacement,word_insertion,word_swap,word_deletion,word_insert_punctuation,
+method_chunk = [word_synonym_replacement,word_insertion,word_swap,word_deletion,word_insert_punctuation,
                 char_keyboard,char_ocr,char_insert,char_substitute,char_swap,char_delete]
+train_chunk = method_chunk 
 
 def get_method_chunk():
     return method_chunk
