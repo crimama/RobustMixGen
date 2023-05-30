@@ -200,9 +200,9 @@ def main(args, config):
     #### Dataset #### 
     print("Creating retrieval dataset")
     for pertur in pertur_list:
-        print(pertur)        
+        print(pertur)
         train_dataset, val_dataset, _ = create_dataset('re', config)  
-        test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'], pertur,config['image_root'])
+        test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'],config['image_root'], pertur = pertur)
 
         if args.distributed:
             num_tasks = utils.get_world_size()
