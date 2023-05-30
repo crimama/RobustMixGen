@@ -1,19 +1,14 @@
+# Default setting 
 train_file:  ['data/COCO/Annotations/coco_train.json'] #image caption json 
 val_file: 'data/COCO/Annotations/coco_val.json'
 test_file: 'data/COCO/Annotations/coco_test.json'
 image_root: 'data/COCO/Images'
 
-#romixgen set
-obj_bg_threshold : 0.01
-bg_center_threshold : 0.7
-obj_bg_mix_ratio : 0.5
-img_info_json : 'data/COCO/Annotations/coco_img_info.json'
-
 bert_config: 'configs/config_bert.json'
 
 image_res: 384
-batch_size_train: 2
-batch_size_test: 2
+batch_size_train: 32
+batch_size_test: 64
 
 queue_size: 65536
 momentum: 0.995
@@ -29,12 +24,26 @@ warm_up: True
 optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
 schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
 
-romixgen: True
-romixgen_ratio: 1 
-romixgen_resize_ratio: 2
-romixgen_img_mix : True #오브젝트의 배경과 bg 를 mixgen 형식으로 mixgen 방식의 mix를 할지
+#For recording 
+pretrained_model: 4
+perturb: False 
 
-mixgen: True
-mixgen_ratio: 1 
-mixgen_resize_ratio: 
-hard_aug: False
+#romixgen
+romixgen:
+  base:
+    romixgen_true: True 
+    romixgen_ratio: 0.5 
+    obj_bg_threshold : 0.01
+    bg_center_threshold : 0.7
+    obj_bg_mix_ratio : 0.5
+    img_info_json : 'data/COCO/Annotations/coco_img_info.json'
+  image:
+    method: 'cutmixup' # ['cutmixup', 'paste']
+    hard_aug: True
+  text:
+    method: 'conjconcat' # ['replace','concat','captioning','conjconcat','txtshuffle','mixconcat']
+    backtrans: False
+    txt_aug: True 
+# Mixgen 
+mixgen: False
+mixgen_num: 16
