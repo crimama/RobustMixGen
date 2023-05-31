@@ -18,7 +18,7 @@ from scipy.ndimage import zoom as scizoom
 from scipy.ndimage.interpolation import map_coordinates
 import warnings
 import os
-from pkg_resources import resource_filename
+from pkg_resources import resource_filename 
 
 warnings.simplefilter("ignore", UserWarning)
 

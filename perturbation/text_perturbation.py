@@ -248,3 +248,4 @@ class style_transfer:
     def __call__(self,sentence):
         new_sentence = self.sf.transfer(sentence,inference_on=self.device)
         return new_sentence 
+ 

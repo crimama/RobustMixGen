@@ -572,4 +572,5 @@ for tmp in severity_chunk:
     print("current_severity:",current_severity)
     os.system("python stylize.py --content-dir='./coco-images-test/' --output-dir='./COCO_IP_stylize_%s/' --alpha=%s"%(current_severity,current_alpha))
     print("finish stylize %s"%tmp)
+    #temp 
 '''
