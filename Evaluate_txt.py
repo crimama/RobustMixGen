@@ -32,7 +32,7 @@ from augmentation import mixgen as mg
 import nlpaug.augmenter.word as naw
 from lavis.models import load_model_and_preprocess
 
-from perturbation.image_perturbation import get_method_chunk
+from perturbation.text_perturbation import get_method_chunk
 
 
 @torch.no_grad()
@@ -193,6 +193,7 @@ def main(args, config):
     utils.init_distributed_mode(args)    
         
     device = torch.device(args.device)
+    print(device)
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
@@ -207,7 +208,7 @@ def main(args, config):
         print(pertur)        
         
         if pertur in ['style_former','style_casual','style_passive','style_active']:
-            pertur = __import__('perturbation.text_perturbation').__dict__['text_perturbation'].style_transfer(pertur,device)
+            pertur = __import__('perturbation.text_perturbation').__dict__['text_perturbation'].style_transfer(pertur,utils.get_rank())
             
         if pertur == 'backtrans':
             pertur = __import__('perturbation.text_perturbation').__dict__['text_perturbation'].backtrans()
@@ -216,7 +217,9 @@ def main(args, config):
                                                 to_model_name='facebook/wmt19-de-en',
                                                 device = device 
                                             )
-        
+        else:
+            backtrans = None 
+            
         train_dataset, val_dataset, _ = create_dataset('re', config)  
         test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
 
@@ -240,7 +243,7 @@ def main(args, config):
         if utils.is_main_process(): 
             import pytz 
             config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-            wandb.init(project="Romixgen_robustness_txt",group=args.output_dir.split('/')[1],name=str(pertur),config=config)
+            wandb.init(project="Romixgen_robustness_txt",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
             
         #### Model #### 
         print("Creating model")
