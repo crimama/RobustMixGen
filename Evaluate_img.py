@@ -198,7 +198,7 @@ def main(args, config):
     cudnn.benchmark = True
 
     #### Dataset #### 
-    print("Creating retrieval dataset")
+    print("Creating retrieval dataset") 
     for pertur in pertur_list:
         print(pertur)
         train_dataset, val_dataset, _ = create_dataset('re', config)  
