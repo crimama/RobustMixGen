@@ -292,7 +292,7 @@ def main(args, config):
                     log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                                 'epoch': epoch,
                                 }
-                    with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+                    with open(os.path.join(args.output_dir, "Eval_txt_log.txt"),"a") as f:
                         f.write(json.dumps(log_stats) + "\n")     
                     print(log_stats)
                     wandb.log(log_stats)
