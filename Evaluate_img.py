@@ -272,8 +272,9 @@ def main(args, config):
                 if args.evaluate:                
                     log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                                 'epoch': epoch,
+                                'pertur': str(pertur).split(' ')[1]
                                 }
-                    with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+                    with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
                         f.write(json.dumps(log_stats) + "\n")     
                     print(log_stats)
                     wandb.log(log_stats)
