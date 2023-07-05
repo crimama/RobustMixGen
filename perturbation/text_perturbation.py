@@ -3,7 +3,6 @@ from random import shuffle
 import nltk 
 import re 
 from nltk.corpus import wordnet 
-from styleformer import Styleformer
 
 
 nltk.download('wordnet','/root/nltk_data')
@@ -237,15 +236,16 @@ def get_method_chunk():
 def get_method_chunk_train():
     return train_chunk
 
-class style_transfer:
-    def __init__(self,style,device):
-        self.style_dict = {'style_former':0,'style_casual':1,'style_passive':2,'style_active':3}
-        self.style = style 
-        self.style_value = self.style_dict[style]
-        self.sf = Styleformer(style=self.style_value)
-        self.device = device 
+#from styleformer import Styleformer
+# class style_transfer:
+#     def __init__(self,style,device):
+#         self.style_dict = {'style_former':0,'style_casual':1,'style_passive':2,'style_active':3}
+#         self.style = style 
+#         self.style_value = self.style_dict[style]
+#         self.sf = Styleformer(style=self.style_value)
+#         self.device = device 
     
-    def __call__(self,sentence):
-        new_sentence = self.sf.transfer(sentence,inference_on=self.device)
-        return new_sentence 
+#     def __call__(self,sentence):
+#         new_sentence = self.sf.transfer(sentence,inference_on=self.device)
+#         return new_sentence 
  

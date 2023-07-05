@@ -87,7 +87,6 @@ class re_eval_dataset(Dataset):
 
         return image, index
     
-from styleformer import Styleformer
 class re_eval_perturb_dataset(Dataset):
     def __init__(self, ann_file, img_size, image_root,pertur=None,txt_pertur=None, max_words=30):        
         self.ann = json.load(open(ann_file,'r'))
