@@ -14,12 +14,20 @@ from torchvision import transforms
 from dataset.utils import pre_caption
 
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file,transform,image_root,romixgen,romixgen_true=True,romixgen_ratio=0.1, max_words=30):        
+    def __init__(self, ann_file: str, transform: list, image_root: str, romixgen: object, 
+                romixgen_true: bool = True ,romixgen_ratio: float = 0.1, max_words: int = 30):        
+        '''
+        ann_file : annotation file : [{'caption': 'A woman wearing a net on her head cutting a cake. ',
+                                        'image ': 'COCO_val2014_000000522418.jpg',
+                                        'image_id': 'coco_522418'},...
+        
+        '''
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
-        self.transform = transform
-        self.image_root = image_root
+            
+        self.transform = transform # transform for nomral image 
+        self.image_root = image_root 
         self.max_words = max_words
         
         self.romixgen = romixgen 
