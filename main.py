@@ -16,12 +16,12 @@ if __name__ == '__main__':
     # Train 
     if not args['evaluate']: # args['evaluate] : only Evaluation 
         main = __import__(f'{config.TASK}').__dict__['main']
-        # main(args, config)    
+        main(args, config)    
         
     # Evaluation Image 
     args['checkpoint'] = os.path.join(args['output_dir'],'checkpoint_best.pth')    
-    # eval_image = __import__(f'{config.TASK}').__dict__['eval_image']
-    # eval_image(args, config)
+    eval_image = __import__(f'{config.TASK}').__dict__['eval_image']
+    eval_image(args, config)
     
     # Evaluation Text 
     eval_text = __import__(f'{config.TASK}').__dict__['eval_text']
