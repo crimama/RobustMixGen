@@ -45,7 +45,7 @@
 python -m torch.distributed.launch --nproc_per_node=2 --use_env main.py \
     --default_setting ./configs/default.yaml \
     --task_setting ./configs/retrieval.yaml \
-    batch_size_train 2 wandb.wandb_use False 
+    batch_size_train 2 wandb.wandb_use False args.evaluate True 
     
 # python main.py \
 #     --default_setting ./configs/default.yaml \

@@ -327,7 +327,7 @@ def eval_text(args, config):
         start_time = time.time()    
         for epoch in range(0, 1):
             
-            score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config, backtrans)
+            score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
         
             if utils.is_main_process():  
                 test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    

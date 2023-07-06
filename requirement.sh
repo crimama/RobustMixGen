@@ -17,6 +17,8 @@ pip install --upgrade pip
 pip install ruamel.yaml
 pip install transformers==4.26.1
 pip install wandb 
+# Image perturbation 
+pip install wand
 # Text perturbation 
 pip install nltk 
 pip install nlpaug==1.1.11
