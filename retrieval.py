@@ -20,6 +20,7 @@ from torch.utils.data import DataLoader
 from models.model_retrieval import ALBEF
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
+from models import load_model_retrieval   
 import wandb 
 
 import utils
@@ -33,7 +34,14 @@ from lavis.models import load_model_and_preprocess as create_caption_model
 from arguments import parser 
 
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb,backtrans,caption_model):
+def set_seed(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    cudnn.benchmark = True
+
+
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
     # train
     model.train()  
     
@@ -73,7 +81,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         if utils.is_main_process(): 
             if config['wandb']['wandb_use']:
                 wandb.log({'loss_ita' : loss_ita.item(),
-                        'loss_itm' : loss_itm.item()
+                            'loss_itm' : loss_itm.item()
                         })
         
     # gather the stats from all processes
@@ -182,8 +190,6 @@ def evaluation(model, data_loader, tokenizer, device, config):
     print('Evaluation time {}'.format(total_time_str)) 
 
     return score_matrix_i2t.cpu().numpy(), score_matrix_t2i.cpu().numpy()
-
-
             
 @torch.no_grad()
 def itm_eval(scores_i2t, scores_t2i, txt2img, img2txt):
@@ -242,30 +248,17 @@ def eval_text(args, config):
     print(device)
 
     # fix the seed for reproducibility
-    seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    set_seed(args.seed + utils.get_rank())
+    
+    #### Model Loading #### 
+    model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
 
-    #### Dataset #### 
+    
     print("Creating retrieval dataset")
     for pertur in pertur_list:
-        print(pertur)        
-        
-        if pertur in ['style_former','style_casual','style_passive','style_active']:
-            pertur = __import__('perturbation.text_perturbation').__dict__['text_perturbation'].style_transfer(pertur,utils.get_rank())
-            
-        if pertur == 'backtrans':
-            pertur = __import__('perturbation.text_perturbation').__dict__['text_perturbation'].backtrans()
-            backtrans = naw.BackTranslationAug(
-                                                from_model_name='facebook/wmt19-en-de', 
-                                                to_model_name='facebook/wmt19-de-en',
-                                                device = device 
-                                            )
-        else:
-            backtrans = None 
-            
+        print(pertur)     
+                   
+        #### Dataset #### 
         train_dataset, val_dataset, _ = create_dataset('re', config)  
         test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
 
@@ -281,47 +274,12 @@ def eval_text(args, config):
                                             num_workers=[0,0,0],
                                             is_trains=[True, False, False], 
                                             collate_fns=[None,None,None])   
-
-        tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
         
-
-        
+        #### Wandb Logging #### 
         if utils.is_main_process(): 
-            import pytz 
-            config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-            wandb.init(project="Romixgen_robustness_txt",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
+            if config['wandb']['wandb_use']:
+                wandb.init(project="Romixgen_robustness_txt",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
             
-        #### Model #### 
-        print("Creating model")
-        model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer)
-        
-        if args.checkpoint:    
-            checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-            state_dict = checkpoint['model']
-            
-            # reshape positional embedding to accomodate for image resolution change
-            pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
-            state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
-            m_pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder_m.pos_embed'],model.visual_encoder_m)   
-            state_dict['visual_encoder_m.pos_embed'] = m_pos_embed_reshaped 
-            
-            for key in list(state_dict.keys()):
-                if 'bert' in key:
-                    encoder_key = key.replace('bert.','')         
-                    state_dict[encoder_key] = state_dict[key] 
-                    del state_dict[key]                
-            msg = model.load_state_dict(state_dict,strict=False)  
-            
-            print('load checkpoint from %s'%args.checkpoint)
-            print(msg)  
-            
-        
-        model = model.to(device)   
-        model_without_ddp = model
-        if args.distributed:
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-            model_without_ddp = model.module   
-
         ## Eval ## 
         print("Start training")
         start_time = time.time()    
@@ -331,21 +289,17 @@ def eval_text(args, config):
         
             if utils.is_main_process():  
                 test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
-                print(test_result)
+                print(test_result)                
                 
-                
-                if args.evaluate:                
-                    log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
-                                'epoch': epoch,
-                                }
-                    with open(os.path.join(args.output_dir, "Eval_txt_log.txt"),"a") as f:
-                        f.write(json.dumps(log_stats) + "\n")     
-                    print(log_stats)
+                log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
+                            'epoch': epoch,
+                            }
+                with open(os.path.join(args.output_dir, "Eval_txt_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                print(log_stats)
+                if config['wandb']['wandb_use']:
                     wandb.log(log_stats)
-                    
-            if args.evaluate: 
-                break
-            
+                                
             dist.barrier()     
             torch.cuda.empty_cache()
 
@@ -363,11 +317,11 @@ def eval_image(args, config):
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    set_seed(args.seed + utils.get_rank())
+
+    #### Model #### 
+    print("Creating model")
+    model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
 
     #### Dataset #### 
     print("Creating retrieval dataset") 
@@ -388,46 +342,11 @@ def eval_image(args, config):
                                             num_workers=[0,0,0],
                                             is_trains=[True, False, False], 
                                             collate_fns=[None,None,None])   
-
-        tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-        
-
-        
+        #### Wandb init #### 
         if utils.is_main_process(): 
-            import pytz 
-            config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-            wandb.init(project="Romixgen_robustness",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
+            if config['wandb']['wandb_use']:
+                wandb.init(project="Romixgen_robustness",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
             
-        #### Model #### 
-        print("Creating model")
-        model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer)
-        
-        if args.checkpoint:    
-            checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-            state_dict = checkpoint['model']
-            
-            # reshape positional embedding to accomodate for image resolution change
-            pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
-            state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
-            m_pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder_m.pos_embed'],model.visual_encoder_m)   
-            state_dict['visual_encoder_m.pos_embed'] = m_pos_embed_reshaped 
-            
-            for key in list(state_dict.keys()):
-                if 'bert' in key:
-                    encoder_key = key.replace('bert.','')         
-                    state_dict[encoder_key] = state_dict[key] 
-                    del state_dict[key]                
-            msg = model.load_state_dict(state_dict,strict=False)  
-            
-            print('load checkpoint from %s'%args.checkpoint)
-            print(msg)  
-            
-        
-        model = model.to(device)   
-        model_without_ddp = model
-        if args.distributed:
-            model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-            model_without_ddp = model.module   
 
         ## Eval ## 
         print("Start training")
@@ -449,7 +368,8 @@ def eval_image(args, config):
                     with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
                         f.write(json.dumps(log_stats) + "\n")     
                     print(log_stats)
-                    wandb.log(log_stats)
+                    if config['wandb']['wandb_use']:
+                        wandb.log(log_stats)
                     
             if args.evaluate: 
                 break
@@ -468,11 +388,7 @@ def main(args, config):
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    set_seed(args.seed + utils.get_rank())
 
     #### Dataset #### 
     print("Creating retrieval dataset")
@@ -486,110 +402,57 @@ def main(args, config):
         samplers = [None, None, None]
     
     train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
-                                                          batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
-                                                          num_workers=[0,0,0],
-                                                          is_trains=[True, False, False], 
-                                                          collate_fns=[None,None,None])   
-       
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-    
-    if config['romixgen']['text']['backtrans']:
-        print("backtranslation model loaded")
-        backtrans = naw.BackTranslationAug(device=device)
-    else:
-        backtrans=None 
-        
-    if config['romixgen']['text']['method'] == 'captioning':
-        print("caption model loaded")
-        caption_model, vis_processors, _ = create_caption_model(name="blip_caption", model_type="base_coco", is_eval=True, device=device)
-    else:
-        caption_model = None 
+                                                        batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
+                                                        num_workers=[0,0,0],
+                                                        is_trains=[True, False, False], 
+                                                        collate_fns=[None,None,None])           
 
     #### wandb logging #### 
     if utils.is_main_process(): 
         if config['wandb']['wandb_use']:
-            import pytz 
-            config['start_time'] = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
             wandb.init(project='Romixgen_retrieval',name=args.output_dir.split('/')[-1],config=config)
     
-    #### Model #### 
-    print("Creating model")
-    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer)
-    
-    if args.checkpoint:    
-        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        state_dict = checkpoint['model']
-        
-        # reshape positional embedding to accomodate for image resolution change
-        pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
-        state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
-        m_pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder_m.pos_embed'],model.visual_encoder_m)   
-        state_dict['visual_encoder_m.pos_embed'] = m_pos_embed_reshaped 
-        
-        for key in list(state_dict.keys()):
-            if 'bert' in key:
-                encoder_key = key.replace('bert.','')         
-                state_dict[encoder_key] = state_dict[key] 
-                del state_dict[key]                
-        msg = model.load_state_dict(state_dict,strict=False)  
-        
-        print('load checkpoint from %s'%args.checkpoint)
-        print(msg)  
-        
-    
-    model = model.to(device)   
-    
-    model_without_ddp = model
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module   
+    #### Model Loading #### 
+    model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
     
     arg_opt = utils.AttrDict(config['optimizer'])
     optimizer = create_optimizer(arg_opt, model)
     arg_sche = utils.AttrDict(config['schedular'])
     lr_scheduler, _ = create_scheduler(arg_sche, optimizer)  
     
+    ## Train ## 
+    
     max_epoch = config['schedular']['epochs']
     warmup_steps = config['schedular']['warmup_epochs']
     best = 0
     best_epoch = 0
-    ## Train ## 
+    
     print("Start training")
     start_time = time.time()    
     for epoch in range(0, max_epoch):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb,backtrans,caption_model)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
         
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
     
-        if utils.is_main_process():  
-            
+        if utils.is_main_process():              
             val_result = itm_eval(score_val_i2t, score_val_t2i, val_loader.dataset.txt2img, val_loader.dataset.img2txt)  
             print(val_result)
             test_result = itm_eval(score_test_i2t, score_test_t2i, test_loader.dataset.txt2img, test_loader.dataset.img2txt)    
-            print(test_result)
+            print(test_result)            
             
-            
-            if args.evaluate:                
-                log_stats = {**{f'val_{k}': v for k, v in val_result.items()},
-                             **{f'test_{k}': v for k, v in test_result.items()},                  
-                            'epoch': epoch,
-                            }
-                with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")     
-            else:
-                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             **{f'val_{k}': v for k, v in val_result.items()},
-                             **{f'test_{k}': v for k, v in test_result.items()},                  
-                            'epoch': epoch,
-                            }
-                with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")   
-                if config['wandb']['wandb_use']:
-                    wandb.log(log_stats)
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                            **{f'val_{k}': v for k, v in val_result.items()},
+                            **{f'test_{k}': v for k, v in test_result.items()},                  
+                        'epoch': epoch,
+                        }
+            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+                f.write(json.dumps(log_stats) + "\n")   
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)
                 
             save_obj = {
                         'model': model_without_ddp.state_dict(),
@@ -598,14 +461,12 @@ def main(args, config):
                         'config': config,
                         'epoch': epoch,
                         }
+            
             if val_result['r_mean']>best:
-               torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-               best = val_result['r_mean']    
-               best_epoch = epoch
+                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+                best = val_result['r_mean']    
+                best_epoch = epoch
             torch.save(save_obj,os.path.join(args.output_dir, f'checkpoint_{epoch}.pth'))
-
-        if args.evaluate: 
-            break
         
         lr_scheduler.step(epoch+warmup_steps+1)  
         dist.barrier()     
