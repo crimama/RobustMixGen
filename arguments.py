@@ -87,7 +87,7 @@ def parser():
             
     
     # Output dir 
-    cfg['output_dir'] = os.path.join(cfg.args.output_dir, cfg.image_root.split('/')[2], cfg.TASK)
+    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.image_root.split('/')[2], cfg.TASK)
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  
