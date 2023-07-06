@@ -1,0 +1,59 @@
+args:
+  output_dir: 'output/'
+  checkpoint: './output/Pretrain/ALBEF_4M.pth'
+  text_encoder: 'bert-base-uncased'
+  evaluate: False 
+  device: 'cuda'
+  seed: 42 
+  world_size: 2
+  dist_url: 'env://'
+  distributed: True 
+
+train_file:  ['../data/COCO/Annotations/coco_train.json'] #image caption json 
+val_file: '../data/COCO/Annotations/coco_val.json'
+test_file: '../data/COCO/Annotations/coco_test.json'
+image_root: '../data/COCO/Images'
+bert_config: 'configs/config_bert.json'
+
+image_res: 384
+batch_size_train: 32
+batch_size_test: 1
+
+queue_size: 65536
+momentum: 0.995
+vision_width: 768
+embed_dim: 256
+temp: 0.07
+k_test: 256
+
+alpha: 0.4
+distill: True
+warm_up: True
+
+optimizer: {opt: adamW, lr: 1e-5, weight_decay: 0.02}
+schedular: {sched: cosine, lr: 1e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
+
+#For recording -> fix 
+pretrained_model: 4
+perturb: False 
+
+#romixgen -> fix 
+romixgen:
+  base:
+    romixgen_true: True 
+    romixgen_ratio: 0.5 
+    obj_bg_threshold : 0.01
+    bg_center_threshold : 0.7
+    obj_bg_mix_ratio : 0.5
+    img_info_json : '../data/COCO/Annotations/coco_img_info.json'
+  image:
+    method: 'cutmixup' # ['cutmixup', 'paste']
+    hard_aug: True
+  text:
+    method: 'conjconcat' # ['replace','concat','captioning','conjconcat','txtshuffle','mixconcat']
+    backtrans: False
+    txt_aug: True 
+wandb:
+  wandb_use: True 
+  
+
