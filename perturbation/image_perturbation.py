@@ -529,12 +529,12 @@ def frost(x, severity=5):
          (0.65, 0.7),
          (0.6, 0.75)][severity - 1]
     idx = np.random.randint(6)
-    filename = ['/Volume/RobustMixGen_hun/perturbation/frost1.png', 
-                '/Volume/RobustMixGen_hun/perturbation/frost2.png', 
-                '/Volume/RobustMixGen_hun/perturbation/frost3.png', 
-                '/Volume/RobustMixGen_hun/perturbation/frost4.jpg', 
-                '/Volume/RobustMixGen_hun/perturbation/frost5.jpg', 
-                '/Volume/RobustMixGen_hun/perturbation/frost6.jpg'][idx]
+    filename = ['./perturbation/frost1.png', 
+                './perturbation/frost2.png', 
+                './perturbation/frost3.png', 
+                './perturbation/frost4.jpg', 
+                './perturbation/frost5.jpg', 
+                './perturbation/frost6.jpg'][idx]
     frost = cv2.imread(filename)
     h2=frost.shape[0]
     w2=frost.shape[1]
