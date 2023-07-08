@@ -17,6 +17,8 @@ pip install --upgrade pip
 pip install ruamel.yaml
 pip install transformers==4.26.1
 pip install wandb 
+# Image perturbation 
+pip install wand
 # Text perturbation 
 pip install nltk 
 pip install nlpaug==1.1.11
@@ -24,3 +26,5 @@ pip install sentencepiece
 #CV2 
 apt-get update && apt-get install libgl1
 apt-get install libmagickwand-dev
+#json -> for SNLI-VE  
+pip install jsonlines 

@@ -1,8 +1,9 @@
-train_file: 'data/json_downstream/ve_train.json'
-val_file: 'data/json_downstream/ve_dev.json'                
-test_file: 'data/json_downstream/ve_test.json'
+TASK : VE 
+train_file: '../data/json_downstream/ve_train.json'
+val_file: '../data/json_downstream/ve_dev.json'                
+test_file: '../data/json_downstream/ve_test.json'
 
-image_root: 'data/Images/Flickr30k/'
+image_root: '../data/SNLI-VE/data/Flickr30K/images'
 
 image_res: 384
 batch_size_train: 2

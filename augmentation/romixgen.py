@@ -58,9 +58,9 @@ def is_main_process():
     return get_rank() == 0
 
 class MiX:
-    def __init__(self, image_info, img_aug_function, txt_aug_function,
-                  obj_bg_threshold, bg_center_threshold, 
-                  normal_image_root, normal_transform):
+    def __init__(self, image_info: dict, img_aug_function, txt_aug_function,
+                  obj_bg_threshold: float, bg_center_threshold: float, 
+                  normal_image_root: str, normal_transform):
         
         self.img_aug = img_aug_function
         self.txt_aug = txt_aug_function 
@@ -210,39 +210,6 @@ class RoMixGen_Img:
         x_left, x_right, y_up, y_down = self.bbox_point(bboxes)
         bg_img[y_up:y_down, x_left:x_right, :] = obj_img
         return bg_img
-       
-    def get_xy_point(self,bg_img,obj_img,bg_inform):
-        (bg_y,bg_x,_) = np.array(bg_img).shape
-        (obj_y,obj_x,_) = np.array(obj_img).shape
-        [bg_midpoint_x,bg_midpoint_y] = bg_inform['max_obj_midpoint']
-
-        # 검정박스 우측 아래 -> 우측 아래 코너에 맞춰야 함 
-        if  (bg_midpoint_y > bg_y/2) & (bg_midpoint_x > bg_x/2):
-            # 오른쪽 아래 
-            y = bg_inform['max_obj_bbox'][1] + bg_inform['max_obj_bbox'][3]
-            x = bg_inform['max_obj_bbox'][0] + bg_inform['max_obj_bbox'][2]
-            x,y = x - obj_x , y - obj_y
-        # 검정박스 좌측 아래 -> 좌측 아래 코너에 맞춰야 함 
-        elif  (bg_midpoint_y > bg_y/2) & (bg_midpoint_x < bg_x/2):
-            # 좌측 아래
-            y = bg_inform['max_obj_bbox'][1] + bg_inform['max_obj_bbox'][3]
-            x = bg_inform['max_obj_bbox'][0] 
-            y =  y - obj_y
-            
-        # 검정박스 우측 위 -> 우측 위 코너에 맞춰야 함 
-        elif  (bg_midpoint_y < bg_y/2) & (bg_midpoint_x > bg_x/2):
-            # 오른쪽 위
-            y = bg_inform['max_obj_bbox'][1] 
-            x = bg_inform['max_obj_bbox'][0] + bg_inform['max_obj_bbox'][2]
-            x = x - obj_x 
-            
-        # 검정박스 좌측 위 -> 좌측 위 코너에 맞춰야 함 
-        else:
-            # 좌측 위
-            y = bg_inform['max_obj_bbox'][1] 
-            x = bg_inform['max_obj_bbox'][0] 
-            
-        return x,y 
     
     def __resize__(self, obj_img, bg_img, size=(384,384)):
         # img resize
@@ -251,14 +218,6 @@ class RoMixGen_Img:
         bg_img = cv2.resize(bg_img, size, interpolation=cv2.INTER_CUBIC)
         resized_bbox = [self.obj_inform["max_obj_bbox"][0] * width_ratio, self.obj_inform["max_obj_bbox"][1] * height_ratio, self.obj_inform["max_obj_bbox"][2] * width_ratio, self.obj_inform["max_obj_bbox"][3] * height_ratio]
         return obj_img, bg_img, resized_bbox
-    
-    def paste(self,obj_inform,bg_inform):
-        obj_img = Image.open(os.path.join(self.image_root, obj_inform['file_name'])).convert('RGB')
-        bg_img  = Image.open(os.path.join(self.image_root, bg_inform['file_name'])).convert('RGB')
-        x,y = self.get_xy_point(bg_img,obj_img,bg_inform)
-        bg_img.paste(obj_img,(int(x),int(y)))
-        img = self.transform_after_mix(bg_img)
-        return img 
     
     def cutmixup(self,obj_inform,bg_inform):
         # Image load and convert to RGB 
@@ -281,15 +240,8 @@ class RoMixGen_Img:
     def __call__(self,obj_id,bg_id):
         self.obj_inform = self.img_info_dict[obj_id] # 이미지 전처리 정보 중 해당 obj의 정보를 가져 옴 
         self.bg_inform  = self.img_info_dict[bg_id]  # 이미지 전처리 정보 중 해당 bg의 정보를 가져 옴 
-        
-        if self.method == 'cutmixup':
-            img = self.cutmixup(self.obj_inform,self.bg_inform)
-        elif self.method == 'paste':
-            img = self.paste(self.obj_inform,self.bg_inform)
+        img = self.cutmixup(self.obj_inform,self.bg_inform)
         return img
-
-
-        
     
 class RoMixGen_Txt:
     def __init__(self,method = 'concat',txt_aug=False): 
@@ -344,23 +296,20 @@ class RoMixGen_Txt:
         return new_txt
     
     def __call__(self,obj_id,bg_id):
+        # object 와 background의 최대 카테고리 정보 
         obj_cat = self.img_info_dict[obj_id]["max_obj_cat"] + self.img_info_dict[obj_id]["max_obj_super_cat"]
         bg_cat = self.img_info_dict[bg_id]["max_obj_cat"] + self.img_info_dict[bg_id]["max_obj_super_cat"]
+        
+        # object와 background의 caption 
         bg_caption = self.img_info_dict[bg_id]["captions"]
         obj_caption = self.img_info_dict[obj_id]['captions'] 
-        self.bg_cat = bg_cat
-        self.bg_caption = bg_caption 
-        self.obj_cat = obj_cat 
-        self.obj_caption = obj_caption
+        
         
         if self.method == 'replace':
             new_caption = self.replace_word(bg_caption,bg_cat,obj_cat)
             
         elif self.method == 'concat':
             new_caption = self.concat(obj_caption,bg_caption)
-            
-        elif self.method == 'captioning':
-            new_caption = '_'
             
         elif self.method == 'conjconcat':
             new_caption = self.conjunction_concat(obj_caption,bg_caption)
