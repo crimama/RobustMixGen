@@ -5,9 +5,12 @@ import time
 from collections import defaultdict, deque
 import datetime 
 import pytz
+import random 
 
 import torch
 import torch.distributed as dist
+import torch.backends.cudnn as cudnn
+
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
@@ -72,7 +75,7 @@ class SmoothedValue(object):
 
 
 class MetricLogger(object):
-    def __init__(self,config, delimiter="\t"):
+    def __init__(self,config=None, delimiter="\t"):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
         self.config = config 
@@ -269,3 +272,9 @@ def init_distributed_mode(args):
                                          world_size=args.world_size, rank=args.rank)
     torch.distributed.barrier()
     setup_for_distributed(args.rank == 0)
+    
+def set_seed(seed):
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    cudnn.benchmark = True
