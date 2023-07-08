@@ -6,6 +6,7 @@ from collections import defaultdict, deque
 import datetime 
 import pytz
 import random 
+import matplotlib.pyplot as plt 
 
 import torch
 import torch.distributed as dist
@@ -278,3 +279,9 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
     cudnn.benchmark = True
+    
+def img_show(img):
+    img = torch.permute(img,dims=(1,2,0)).numpy()
+    img = (img-np.min(img)) / (np.max(img) - np.min(img))
+    plt.imshow(img)
+    plt.show()
