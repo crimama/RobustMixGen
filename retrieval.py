@@ -34,14 +34,9 @@ from lavis.models import load_model_and_preprocess as create_caption_model
 from arguments import parser 
 
 
-def set_seed(seed):
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
 
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config,wandb):
+def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, wandb):
     # train
     model.train()  
     
@@ -78,12 +73,6 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         if epoch==0 and i%step_size==0 and i<=warmup_iterations: 
             scheduler.step(i//step_size)      
 
-        if utils.is_main_process(): 
-            if config['wandb']['wandb_use']:
-                wandb.log({'loss_ita' : loss_ita.item(),
-                            'loss_itm' : loss_itm.item()
-                        })
-        
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
@@ -248,17 +237,18 @@ def eval_text(args, config):
     print(device)
 
     # fix the seed for reproducibility
-    set_seed(args.seed + utils.get_rank())
+    utils.set_seed(args.seed + utils.get_rank())
     
     #### Model Loading #### 
     model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
 
     
-    print("Creating retrieval dataset")
+    # Start Evaluation 
     for pertur in pertur_list:
         print(pertur)     
                    
         #### Dataset #### 
+        print("Creating retrieval dataset")
         train_dataset, val_dataset, _ = create_dataset('re', config)  
         test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
 
@@ -317,7 +307,7 @@ def eval_image(args, config):
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    set_seed(args.seed + utils.get_rank())
+    utils.set_seed(args.seed + utils.get_rank())
 
     #### Model #### 
     print("Creating model")
@@ -349,7 +339,7 @@ def eval_image(args, config):
             
 
         ## Eval ## 
-        print("Start training")
+        print("Start Evaluation")
         start_time = time.time()    
         for epoch in range(0, 1):
             
@@ -388,7 +378,7 @@ def main(args, config):
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    set_seed(args.seed + utils.get_rank())
+    utils.set_seed(args.seed + utils.get_rank())
 
     #### Dataset #### 
     print("Creating retrieval dataset")
@@ -421,7 +411,6 @@ def main(args, config):
     lr_scheduler, _ = create_scheduler(arg_sche, optimizer)  
     
     ## Train ## 
-    
     max_epoch = config['schedular']['epochs']
     warmup_steps = config['schedular']['warmup_epochs']
     best = 0
