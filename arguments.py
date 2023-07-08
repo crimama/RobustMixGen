@@ -79,8 +79,8 @@ def parser():
     
     # update cfg
     for k, v in zip(args.opts[0::2], args.opts[1::2]):
-        if k == 'DEFAULT.exp_name':
-            cfg.exp_name = f'{cfg.DEFAULT.exp_name}-{v}'
+        if k == 'exp_name':
+            cfg.exp_name = f'{cfg.exp_name}-{v}'
         else:
             
             OmegaConf.update(cfg, k, convert_type(v), merge=True)  
