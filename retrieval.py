@@ -269,13 +269,12 @@ def eval_text(args, config):
         #### Wandb Logging #### 
         if utils.is_main_process(): 
             if config['wandb']['wandb_use']:
-                wandb.init(project="Romixgen", name=config['exp_name']+'-'+str(pertur).split(' ')[1], config=config)
+                wandb.init(project="RobustMixGen", name=config['exp_name']+'-'+str(pertur).split(' ')[1], config=config)
             
         ## Eval ## 
         print("Start training")
         start_time = time.time()    
-        for epoch in range(0, 1):
-            
+        for epoch in range(0, 1):    
             score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
         
             if utils.is_main_process():  
@@ -337,7 +336,7 @@ def eval_image(args, config):
         #### Wandb init #### 
         if utils.is_main_process(): 
             if config['wandb']['wandb_use']:
-                wandb.init(project="Romixgen_retrieval",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
             
 
         ## Eval ## 
@@ -399,7 +398,7 @@ def main(args, config):
     #### wandb logging #### 
     if utils.is_main_process(): 
         if config['wandb']['wandb_use']:
-            wandb.init(project='Romixgen_retrieval', name=config['exp_name'], config=config)
+            wandb.init(project='RobustMixGen', name=config['exp_name'], config=config)
     
     #### Model Loading #### 
     model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
