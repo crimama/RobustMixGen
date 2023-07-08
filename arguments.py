@@ -91,3 +91,21 @@ def parser():
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  
+
+def jupyter_parser(default_setting:str=None, task_setting:str=None):
+
+    # load default config
+    cfg = OmegaConf.load(default_setting)    
+    
+    if task_setting:
+        cfg_task = OmegaConf.load(task_setting)
+        cfg = OmegaConf.merge(cfg, cfg_task)
+    
+    # Update experiment name
+    cfg.exp_name = cfg['TASK']
+    
+    # Output dir 
+    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.image_root.split('/')[2], cfg.TASK)
+    cfg = EasyDict(OmegaConf.to_container(cfg))
+    
+    return cfg  
