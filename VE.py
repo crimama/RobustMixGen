@@ -72,8 +72,137 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     print("Averaged stats:", metric_logger.global_avg())     
     return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}    
 
-#def eval_image(args, config):
+def eval_text(args, config):
+    from perturbation.text_perturbation import get_method_chunk
+    from dataset.ve_dataset import ve_pertur_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)    
     
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
+    
+    #### Dataset #### 
+    print("Creating retrieval dataset") 
+    for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
+        print(pertur)
+        train_dataset, val_dataset, _ = create_dataset('re', config)  
+        test_dataset = ve_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler([train_dataset], [True], num_tasks, global_rank) + [None, None]
+        else:
+            samplers = [None, None, None]
+        
+        _, _, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
+                                            batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
+                                            num_workers=[0,0,0],
+                                            is_trains=[True, False, False], 
+                                            collate_fns=[None,None,None])  
+        
+        #### Wandb init #### 
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+                
+        #### Evaluation #### 
+        print("Start Evaluation")
+        start_time = time.time()  
+        for epoch in range(0,1):  
+            test_stats = evaluate(model, test_loader, tokenizer, device, config)
+            
+            if utils.is_main_process():  
+                    
+                log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},                  
+                            'epoch': epoch,
+                            'pertur': str(pertur).split(' ')[1]
+                            }
+                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                print(log_stats)
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)
+                    
+            
+            dist.barrier()     
+            torch.cuda.empty_cache()
+
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print('Training time {}'.format(total_time_str))        
+        wandb.finish()
+
+def eval_image(args, config):
+    from perturbation.image_perturbation import get_method_chunk
+    from dataset.ve_dataset import ve_pertur_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)    
+    
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
+    
+    #### Dataset #### 
+    print("Creating retrieval dataset") 
+    for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
+        print(pertur)
+        train_dataset, val_dataset, _ = create_dataset('re', config)  
+        test_dataset = ve_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], img_pertur = pertur)
+
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler([train_dataset], [True], num_tasks, global_rank) + [None, None]
+        else:
+            samplers = [None, None, None]
+        
+        _, _, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
+                                            batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
+                                            num_workers=[0,0,0],
+                                            is_trains=[True, False, False], 
+                                            collate_fns=[None,None,None])  
+        
+        #### Wandb init #### 
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+                
+        #### Evaluation #### 
+        print("Start Evaluation")
+        start_time = time.time()  
+        for epoch in range(0,1):  
+            test_stats = evaluate(model, test_loader, tokenizer, device, config)
+            
+            if utils.is_main_process():  
+                    
+                log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},                  
+                            'epoch': epoch,
+                            'pertur': str(pertur).split(' ')[1]
+                            }
+                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                print(log_stats)
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)
+                    
+            
+            dist.barrier()     
+            torch.cuda.empty_cache()
+
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print('Training time {}'.format(total_time_str))        
+        wandb.finish()
 
 @torch.no_grad()
 def evaluate(model, data_loader, tokenizer, device, config):
