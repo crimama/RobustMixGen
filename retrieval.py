@@ -245,6 +245,7 @@ def eval_text(args, config):
     
     # Start Evaluation 
     for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)     
                    
         #### Dataset #### 
@@ -268,7 +269,7 @@ def eval_text(args, config):
         #### Wandb Logging #### 
         if utils.is_main_process(): 
             if config['wandb']['wandb_use']:
-                wandb.init(project="Romixgen_robustness_txt",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
+                wandb.init(project="Romixgen", name=config['exp_name']+'-'+str(pertur).split(' ')[1], config=config)
             
         ## Eval ## 
         print("Start training")
@@ -316,6 +317,7 @@ def eval_image(args, config):
     #### Dataset #### 
     print("Creating retrieval dataset") 
     for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
         train_dataset, val_dataset, _ = create_dataset('re', config)  
         test_dataset = re_eval_perturb_dataset(config['test_file'],config['image_res'],config['image_root'], pertur = pertur)
@@ -335,7 +337,7 @@ def eval_image(args, config):
         #### Wandb init #### 
         if utils.is_main_process(): 
             if config['wandb']['wandb_use']:
-                wandb.init(project="Romixgen_robustness",group=args.output_dir.split('/')[1],name=str(pertur).split(' ')[1],config=config)
+                wandb.init(project="Romixgen_retrieval",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
             
 
         ## Eval ## 
@@ -350,19 +352,16 @@ def eval_image(args, config):
                 print(test_result)
                 
                 
-                if args.evaluate:                
-                    log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
-                                'epoch': epoch,
-                                'pertur': str(pertur).split(' ')[1]
-                                }
-                    with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
-                        f.write(json.dumps(log_stats) + "\n")     
-                    print(log_stats)
-                    if config['wandb']['wandb_use']:
-                        wandb.log(log_stats)
+                log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
+                            'epoch': epoch,
+                            'pertur': str(pertur).split(' ')[1]
+                            }
+                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                print(log_stats)
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)
                     
-            if args.evaluate: 
-                break
             
             dist.barrier()     
             torch.cuda.empty_cache()
@@ -400,7 +399,7 @@ def main(args, config):
     #### wandb logging #### 
     if utils.is_main_process(): 
         if config['wandb']['wandb_use']:
-            wandb.init(project='Romixgen_retrieval',name=args.output_dir.split('/')[-1],config=config)
+            wandb.init(project='Romixgen_retrieval', name=config['exp_name'], config=config)
     
     #### Model Loading #### 
     model, model_without_ddp, tokenizer = load_model_retrieval(args, config, device)
