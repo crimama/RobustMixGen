@@ -26,3 +26,5 @@ pip install sentencepiece
 #CV2 
 apt-get update && apt-get install libgl1
 apt-get install libmagickwand-dev
+#json -> for SNLI-VE  
+pip install jsonlines 
