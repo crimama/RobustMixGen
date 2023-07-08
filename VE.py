@@ -72,6 +72,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     print("Averaged stats:", metric_logger.global_avg())     
     return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}    
 
+#def eval_image(args, config):
+    
 
 @torch.no_grad()
 def evaluate(model, data_loader, tokenizer, device, config):
@@ -130,7 +132,7 @@ def main(args, config):
     #### wandb logging #### 
     if utils.is_main_process(): 
         if config['wandb']['wandb_use']:
-            wandb.init(project='Romixgen_ve',name=args.output_dir.split('/')[-1],config=config)
+            wandb.init(project="RobustMixGen",name=config['exp_name'],config=config)
             
     #### Model #### 
     model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
@@ -158,37 +160,28 @@ def main(args, config):
         test_stats = evaluate(model, test_loader, tokenizer, device, config)
 
         if utils.is_main_process():  
-            if args.evaluate:
-                log_stats = {**{f'val_{k}': v for k, v in val_stats.items()},
-                             **{f'test_{k}': v for k, v in test_stats.items()},
-                            'epoch': epoch,
-                            }
-
-                with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")            
-            else:    
-                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             **{f'val_{k}': v for k, v in val_stats.items()},
-                             **{f'test_{k}': v for k, v in test_stats.items()},
-                            'epoch': epoch,
-                            }
-
-                with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                    f.write(json.dumps(log_stats) + "\n")
-                if config['wandb']['wandb_use']:
-                    wandb.log(log_stats)    
-
-                if float(val_stats['acc'])>best:
-                    save_obj = {
-                        'model': model_without_ddp.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'lr_scheduler': lr_scheduler.state_dict(),
-                        'config': config,
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                            **{f'val_{k}': v for k, v in val_stats.items()},
+                            **{f'test_{k}': v for k, v in test_stats.items()},
                         'epoch': epoch,
-                    }
-                    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth')) 
-                    best = float(val_stats['acc'])
-                    best_epoch = epoch
+                        }
+
+            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)    
+
+            if float(val_stats['acc'])>best:
+                save_obj = {
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'config': config,
+                    'epoch': epoch,
+                }
+                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth')) 
+                best = float(val_stats['acc'])
+                best_epoch = epoch
         
         lr_scheduler.step(epoch+warmup_steps+1)  
         dist.barrier()   
