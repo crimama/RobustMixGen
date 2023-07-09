@@ -76,7 +76,7 @@ class SmoothedValue(object):
 
 
 class MetricLogger(object):
-    def __init__(self,config=None, delimiter="\t"):
+    def __init__(self,config, delimiter="\t"):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
         self.config = config 
