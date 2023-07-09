@@ -7,7 +7,7 @@ image_root: '../data/SNLI-VE/data/Flickr30K/images'
 
 image_res: 384
 batch_size_train: 2
-batch_size_test: 2 
+batch_size_test: 4
 
 alpha: 0.4
 distill: True
