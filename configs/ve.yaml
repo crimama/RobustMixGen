@@ -3,7 +3,7 @@ train_file: '../data/json_downstream/ve_train.json'
 val_file: '../data/json_downstream/ve_dev.json'                
 test_file: '../data/json_downstream/ve_test.json'
 
-image_root: '../data/Flickr30K/images'
+image_root: '../data/Flickr30K/Images'
 
 image_res: 384
 batch_size_train: 2
