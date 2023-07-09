@@ -1,9 +1,11 @@
 import os
 import json
 import random
+import numpy as np 
 from PIL import Image
 from torch.utils.data import Dataset
-from dataset.utils import pre_question
+from dataset.utils import pre_question, pertur_check, get_transform
+
 
 
 class vqa_dataset(Dataset):
@@ -68,3 +70,36 @@ class vqa_dataset(Dataset):
             answers = [answer+self.eos for answer in answers]
                 
             return image, question, answers, weights
+        
+        
+class vqa_pertur_dataset(vqa_dataset):
+    def __init__(self, ann_file, img_size, vqa_root, vg_root, eos='[SEP]', split="test", img_pertur=None, txt_pertur=None, max_ques_words=30, answer_list=''):
+        super(vqa_pertur_dataset, self).__init__(
+                                           ann_file       = ann_file,
+                                           transform      = get_transform(img_size),
+                                           vqa_root       = vqa_root,
+                                           vg_root        = vg_root,
+                                           eos            = eos,
+                                           split          = split,
+                                           max_ques_words = max_ques_words,
+                                           answer_list    = answer_list)
+        self.img_pertur = pertur_check(img_pertur)
+        self.txt_pertur = pertur_check(txt_pertur)
+            
+    def __getitem__(self, index):
+        
+        ann = self.ann[index]
+        
+        if ann['dataset']=='vqa':
+            image_path = os.path.join(self.vqa_root,ann['image'])    
+        elif ann['dataset']=='vg':
+            image_path = os.path.join(self.vg_root,ann['image'])
+            
+        image = Image.open(image_path).convert('RGB')   
+        image = self.img_pertur(np.array(image),severity=2).astype(np.uint8)
+        image = self.transform(Image.fromarray(image).convert('RGB'))     
+        
+        question = pre_question(ann['question'],self.max_ques_words)   
+        question = self.txt_pertur(question)
+        question_id = ann['question_id']            
+        return image, question, question_id
