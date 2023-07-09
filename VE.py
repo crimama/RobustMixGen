@@ -82,7 +82,7 @@ def eval_text(args, config):
     
     # fix the seed for reproducibility
     utils.set_seed(args.seed + utils.get_rank())
-    
+        
     model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
     
     #### Dataset #### 
@@ -90,7 +90,7 @@ def eval_text(args, config):
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        train_dataset, val_dataset, _ = create_dataset('re', config)  
+        train_dataset, val_dataset, _ = create_dataset('ve', config)  
         test_dataset = ve_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
 
         if args.distributed:
@@ -121,9 +121,10 @@ def eval_text(args, config):
                     
                 log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Text',
                             'pertur': str(pertur).split(' ')[1]
                             }
-                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
@@ -156,7 +157,7 @@ def eval_image(args, config):
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        train_dataset, val_dataset, _ = create_dataset('re', config)  
+        train_dataset, val_dataset, _ = create_dataset('ve', config)  
         test_dataset = ve_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], img_pertur = pertur)
 
         if args.distributed:
@@ -181,15 +182,16 @@ def eval_image(args, config):
         print("Start Evaluation")
         start_time = time.time()  
         for epoch in range(0,1):  
-            test_stats = evaluate(model, test_loader, tokenizer, device, config)
+            test_stats = evaluate(model_without_ddp, test_loader, tokenizer, device, config)
             
             if utils.is_main_process():  
                     
                 log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Image', 
                             'pertur': str(pertur).split(' ')[1]
                             }
-                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
@@ -209,7 +211,7 @@ def evaluate(model, data_loader, tokenizer, device, config):
     # test
     model.eval()
             
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
 
     header = 'Evaluation:'
     print_freq = 50
@@ -295,7 +297,7 @@ def main(args, config):
                         'epoch': epoch,
                         }
 
-            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+            with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
                 f.write(json.dumps(log_stats) + "\n")
             if config['wandb']['wandb_use']:
                 wandb.log(log_stats)    
@@ -320,37 +322,16 @@ def main(args, config):
     print('Training time {}'.format(total_time_str)) 
     
     if utils.is_main_process():   
-        with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+        with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
             f.write("best epoch: %d"%best_epoch)         
             
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('--config', default='./configs/VE.yaml')
-    # parser.add_argument('--output_dir', default='output/VE')  
-    # parser.add_argument('--checkpoint', default='')   
-    # parser.add_argument('--text_encoder', default='bert-base-uncased')
-    # parser.add_argument('--evaluate', action='store_true')    
-    # parser.add_argument('--device', default='cuda')
-    # parser.add_argument('--seed', default=42, type=int)
-    # parser.add_argument('--world_size', default=1, type=int, help='number of distributed processes')    
-    # parser.add_argument('--dist_url', default='env://', help='url used to set up distributed training')
-    # parser.add_argument('--distributed', default=True, type=bool)
-    # args = parser.parse_args()
-
-    # config = yaml.load(open(args.config, 'r'), Loader=yaml.Loader)
-
-    # Path(args.output_dir).mkdir(parents=True, exist_ok=True)
-        
-    # yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))    
-    
-    # main(args, config)
     config = parser()
     args = config.args 
     
-
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
         
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))    
-    config['args']['checkpoint'] = os.path.join(config['args']['output_dir'],'checkpoint_best.pt')
     main(args, config)
+    config['args']['checkpoint'] = os.path.join(config['args']['output_dir'],'checkpoint_best.pt')
