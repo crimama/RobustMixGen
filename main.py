@@ -10,7 +10,7 @@ if __name__ == '__main__':
     config['output_dir'] = args.output_dir 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
     
-    if config.TASK == 'VQA':
+    if config.TASK in ['VQA','Grounding']:
         args.result_dir = os.path.join(args.output_dir, 'result')
         Path(args.result_dir).mkdir(parents=True, exist_ok=True)
     
