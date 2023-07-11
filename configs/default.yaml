@@ -9,15 +9,11 @@ args:
   dist_url: 'env://'
   distributed: True 
 
-train_file: ['../data/json_downstream/coco_train.json']
-val_file: '../data/json_downstream/coco_val.json'                
-test_file: '../data/json_downstream/coco_test.json'
-image_root: '../data/COCO/Images'
-bert_config: 'configs/config_bert.json'
 
+bert_config: 'configs/config_bert.json'
 image_res: 384
-batch_size_train: 32
-batch_size_test: 64
+batch_size_train: 2
+batch_size_test: 2
 
 queue_size: 65536
 momentum: 0.995
@@ -40,7 +36,7 @@ perturb: False
 #romixgen -> fix 
 romixgen:
   base:
-    romixgen_true: True 
+    romixgen_true: False 
     romixgen_ratio: 0.5 
     obj_bg_threshold : 0.01
     bg_center_threshold : 0.7

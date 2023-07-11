@@ -1,7 +1,7 @@
-TASK : retrieval 
-train_file:  ['../data/json_downstream/flickr30k_train.json']
-val_file: '../data/json_downstream/flickr30k_val.json'                
-test_file: '../data/json_downstream/flickr30k_test.json'
+TASK : Retrieval 
+train_file:  ['../data/json_downstream/Retrieval/flickr30k_train.json']
+val_file: '../data/json_downstream/Retrieval/flickr30k_val.json'                
+test_file: '../data/json_downstream/Retrieval/flickr30k_test.json'
 image_root: '../data/Flickr30K/images' #flickr30k-images/
 
 bert_config: 'configs/config_bert.json'
