@@ -67,7 +67,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     print("Averaged stats:", metric_logger.global_avg())     
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
 
-def eval_image(args, config):
+def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
