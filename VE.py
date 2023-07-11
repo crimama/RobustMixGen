@@ -86,7 +86,7 @@ def eval_text(args, config):
     model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
     
     #### Dataset #### 
-    print("Creating retrieval dataset") 
+    print("Creating dataset") 
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
@@ -153,7 +153,7 @@ def eval_image(args, config):
     model, model_without_ddp, tokenizer = load_model_ve(args, config, device)
     
     #### Dataset #### 
-    print("Creating retrieval dataset") 
+    print("Creating dataset") 
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
