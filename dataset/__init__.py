@@ -50,7 +50,7 @@ def create_dataset(dataset, config):
     if dataset=='pretrain':
         dataset = pretrain_dataset(config['train_file'], pretrain_transform)                  
         return dataset      
-               
+
     elif dataset=='re':          
         train_dataset = re_train_dataset(ann_file      = config['train_file'],
                                         transform      = train_transform,

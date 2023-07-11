@@ -1,0 +1,23 @@
+TASK: Grounding
+args:
+  gradcam_mode: itm
+  block_num: 8 
+
+train_file: ['../data/json_downstream/Grounding/refcoco+_train.json']
+test_file: ['../data/json_downstream/Grounding/refcoco+_val.json','../data/json_downstream/Grounding/refcoco+_test.json']
+
+refcoco_data: '../data/json_downstream/Grounding'
+det_file: '../data/json_downstream/Grounding/refcoco+/dets.json'            
+coco_file: '../data/json_downstream/Grounding/refcoco+/cocos.json'    
+
+image_root: '../data/COCO/Images'
+
+batch_size: 2
+
+
+
+
+
+
+
+

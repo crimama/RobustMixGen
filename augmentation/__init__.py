@@ -2,10 +2,9 @@ import json
 
 from PIL import Image
 from torchvision import transforms
-
-from .romixgen import MiX, RoMixGen_Img, RoMixGen_Txt
 from dataset.randaugment import RandomAugment
-
+from .txt_aug import get_txt_method
+from .romixgen import RoMixGen 
 
 def create_romixgen(config):
     if config['romixgen']['image']['hard_aug']:
@@ -23,24 +22,16 @@ def create_romixgen(config):
                                             transforms.ToTensor(),
                                             transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
                                         ])
-
     
-    img_func = RoMixGen_Img(image_root            = config['image_root'],
-                            transform_after_mix   = transform_after_mix,
-                            method                = config['romixgen']['image']['method'],
-                            obj_bg_mix_ratio      = config['romixgen']['base']['obj_bg_mix_ratio'],) 
 
-    txt_func = RoMixGen_Txt(method = config['romixgen']['text']['method'],
-                            txt_aug = config['romixgen']['text']['txt_aug'])
-
-    romixgen = MiX( 
-                    image_info          = config['romixgen']['base']['img_info_json'],
-                    img_aug_function    = img_func,
-                    txt_aug_function    = txt_func,
-                    obj_bg_threshold    = config['romixgen']['base']['obj_bg_threshold'],
-                    bg_center_threshold = config['romixgen']['base']['bg_center_threshold'],
-                    normal_image_root   = config['image_root'],
-                    normal_transform    = transform_after_mix
-                    )
+    romixgen = RoMixGen(image_info_dir  = config['romixgen']['base']['img_info_json'],
+                image_root      = config['image_root'],
+                transform       = transform_after_mix, 
+                image_mix_ratio = config['romixgen']['base']['img_mix_ratio'],
+                txt_method      = config['romixgen']['text']['method'],
+                txt_pertur      = config['romixgen']['text']['txt_aug'],
+                obj_bg_threshold= config['romixgen']['base']['obj_bg_threshold']
+                )
     
     return romixgen
+

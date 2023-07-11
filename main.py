@@ -9,9 +9,12 @@ if __name__ == '__main__':
     args = config.args
     config['output_dir'] = args.output_dir 
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
+    
+    if config.TASK in ['VQA','Grounding']:
+        args.result_dir = os.path.join(args.output_dir, 'result')
+        Path(args.result_dir).mkdir(parents=True, exist_ok=True)
+    
     yaml.dump(config, open(os.path.join(args.output_dir, 'config.yaml'), 'w'))   
-    
-    
     
     # Train 
     if not args['evaluate']: # args['evaluate] : only Evaluation 

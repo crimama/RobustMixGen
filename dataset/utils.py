@@ -1,5 +1,6 @@
 import re
-
+from torchvision import transforms 
+from PIL import Image 
 def pre_question(question,max_ques_words):
     question = re.sub(
         r"([,.'!?\"()*#:;~])",
@@ -212,4 +213,19 @@ def computeIoU(box1, box2):
     return float(inter)/union
         
         
-        
+def pertur_check(pertur):
+    def clean(value, **params):
+        return value 
+    if not pertur:
+        return clean 
+    else:
+        return pertur 
+    
+def get_transform(img_size):
+        normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        test_transform      = transforms.Compose([
+                                                transforms.Resize((img_size,img_size),interpolation=Image.BICUBIC),
+                                                transforms.ToTensor(),
+                                                normalize,
+                                                ])
+        return test_transform

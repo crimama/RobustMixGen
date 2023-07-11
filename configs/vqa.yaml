@@ -1,0 +1,28 @@
+TASK : VQA 
+
+args:
+  text_decoder: 'bert-base-uncased'
+  
+train_file: ['../data/json_downstream/VQA/vqa_train.json',
+             '../data/json_downstream/VQA/vqa_val.json',
+             '../data/json_downstream/VQA/vg_qa.json']
+             
+test_file: ['../data/json_downstream/VQA/vqa_test.json']
+answer_list: '../data/json_downstream/VQA/answer_list.json'
+
+vqa_root: '../data/COCO/Images' #train2014/
+vg_root: '../data/VG/Images'  #image/
+image_root: './'
+k_test: 128
+
+eos: '[SEP]'
+
+optimizer: {opt: adamW, lr: 2e-5, weight_decay: 0.02}
+schedular: {sched: cosine, lr: 2e-5, epochs: 8, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 4, cooldown_epochs: 0}
+
+
+
+
+
+
+

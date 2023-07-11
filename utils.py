@@ -76,7 +76,7 @@ class SmoothedValue(object):
 
 
 class MetricLogger(object):
-    def __init__(self,config=None, delimiter="\t"):
+    def __init__(self,config, delimiter="\t"):
         self.meters = defaultdict(SmoothedValue)
         self.delimiter = delimiter
         self.config = config 
@@ -163,7 +163,7 @@ class MetricLogger(object):
                         now=str(datetime.datetime.now(pytz.timezone('Asia/Seoul'))))
                 print(step_msg)
                 if is_main_process():
-                    with open(os.path.join(self.config['output_dir'], "log.txt"),"a") as f:
+                    with open(os.path.join(self.config.args.output_dir, "log.txt"),"a") as f:
                         f.write(step_msg + "\n")   
             i += 1
             end = time.time()
@@ -172,7 +172,7 @@ class MetricLogger(object):
         print_message = '{} Total time: {} ({:.4f} s / it)'.format(
             header, total_time_str, total_time / len(iterable))
         if is_main_process():
-            with open(os.path.join(self.config['output_dir'], "log.txt"),"a") as f:
+            with open(os.path.join(self.config.args.output_dir, "log.txt"),"a") as f:
                 f.write(print_message + "\n")   
         print(print_message)
         

@@ -96,7 +96,7 @@ class re_eval_dataset(Dataset):
         return image, index
     
 class re_eval_perturb_dataset(Dataset):
-    def __init__(self, ann_file, img_size, image_root,pertur=None,txt_pertur=None, max_words=30):        
+    def __init__(self, ann_file, img_size, image_root, pertur=None, txt_pertur=None, max_words=30):        
         self.ann = json.load(open(ann_file,'r'))
         self.image_root = image_root
         self.max_words = max_words 
@@ -130,7 +130,6 @@ class re_eval_perturb_dataset(Dataset):
         else:
             return pertur 
             
-    
     
     def get_transforms(self):
         normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))

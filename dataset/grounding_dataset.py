@@ -1,8 +1,13 @@
 import json
 import os
+import numpy as np 
+
 from torch.utils.data import Dataset
 from PIL import Image
-from dataset.utils import pre_caption
+from dataset.utils import pre_caption, pertur_check
+from torchvision import transforms 
+from dataset.randaugment import RandomAugment
+
 
 class grounding_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root, max_words=30, mode='train'):        
@@ -43,3 +48,40 @@ class grounding_dataset(Dataset):
             return image, caption, self.img_ids[img_id]
         else:
             return image, caption, ann['ref_id']
+        
+class grounding_pertur_dataset(grounding_dataset):
+    def __init__(self, ann_file, img_res, image_root, mode='test',
+                    img_pertur=None, txt_pertur=None):        
+        super(grounding_pertur_dataset, self).__init__(
+                                                        ann_file   = ann_file,
+                                                        transform  = self.get_transform(img_res),
+                                                        image_root = image_root,
+                                                        mode       = mode 
+                                                    )
+        
+        self.img_pertur = pertur_check(img_pertur)
+        self.txt_pertur = pertur_check(txt_pertur)
+        
+    def get_transform(self, img_res):
+        normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
+        train_transform = transforms.Compose([                        
+                transforms.Resize((img_res,img_res),interpolation=Image.BICUBIC),
+                transforms.RandomHorizontalFlip(),
+                RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
+                                                    'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+                transforms.ToTensor(),
+                normalize,
+            ])        
+        return train_transform 
+    
+    def __getitem__(self, index):
+        ann = self.ann[index]
+        
+        image_path = os.path.join(self.image_root, ann['image'])
+        image = Image.open(image_path).convert('RGB')   
+        image = self.img_pertur(np.array(image),severity=2).astype(np.uint8)
+        image = self.transform(Image.fromarray(image).convert('RGB'))     
+        
+        caption = pre_caption(ann['text'], self.max_words)
+        
+        return image, caption, ann['ref_id']

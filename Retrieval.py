@@ -436,7 +436,7 @@ def main(args, config):
                             **{f'test_{k}': v for k, v in test_result.items()},                  
                         'epoch': epoch,
                         }
-            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+            with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
                 f.write(json.dumps(log_stats) + "\n")   
             if config['wandb']['wandb_use']:
                 wandb.log(log_stats)

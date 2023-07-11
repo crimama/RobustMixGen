@@ -1,11 +1,12 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import numpy as np
-import random
 import time
 import datetime
 import json
+import wandb 
+
 from pathlib import Path
 
 import torch
@@ -15,9 +16,7 @@ import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 from torch.utils.data import DataLoader
 
-from models.model_retrieval import ALBEF
-from models.vit import interpolate_pos_embed
-from models.tokenization_bert import BertTokenizer
+from models import load_model_grounding
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
@@ -27,13 +26,11 @@ from optim import create_optimizer
 
 from refTools.refer_python3 import REFER
 
-from pdb import set_trace as breakpoint
-
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=1, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_itm', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=1, fmt='{value:.4f}'))
@@ -70,12 +67,153 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     print("Averaged stats:", metric_logger.global_avg())     
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
 
+def eval_text(args, config):
+    from perturbation.text_perturbation import get_method_chunk
+    from dataset.grounding_dataset import grounding_pertur_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)  
+    
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    #### Model Load #### 
+    model, model_without_ddp, tokenizer = load_model_grounding(args, config, device)
 
-def val(model, data_loader, tokenizer, device, gradcam_mode, block_num):
+    ## refcoco evaluation tools
+    refer = REFER(config['refcoco_data'], 'refcoco+', 'unc')
+    dets = json.load(open(config['det_file'],'r'))
+    cocos = json.load(open(config['coco_file'],'r'))   
+        
+    #### Dataset #### 
+    for pertur in pertur_list:
+        print("Creating dataset")
+        grd_train_dataset, _ = create_dataset('grounding', config) 
+        test_dataset = grounding_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur = pertur)
+        datasets = [grd_train_dataset, test_dataset]
+        
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler(datasets, [True, False], num_tasks, global_rank)         
+        else:
+            samplers = [None, None]
+
+        _, test_loader = create_loader(datasets,samplers,batch_size=[config['batch_size'],config['batch_size']],
+                                                    num_workers=[0,0],is_trains=[True, False], collate_fns=[None,None])
+        
+        
+         #### Wandb init #### 
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+
+        print("Start Evaluation")
+        start_time = time.time()    
+        for epoch in range(0, 1):
+            result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num, config)
+
+            results = collect_result(result, args.result_dir, 'epoch%d'%epoch, is_json=False, is_list=True)
+            
+            if utils.is_main_process():  
+                grounding_acc = grounding_eval(results, dets, cocos, refer, alpha=0.5, mask_size=24)
+                log_stats = {**{f'{k}': v for k, v in grounding_acc.items()},
+                            'epoch': epoch,
+                            'pertur_type' : 'Image', 
+                            'pertur': str(pertur).split(' ')[1]
+                        }   
+                
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                    
+                print(log_stats)
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)
+            dist.barrier()     
+            torch.cuda.empty_cache()
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print('Training time {}'.format(total_time_str))        
+        wandb.finish()
+        
+def eval_image(args, config):
+    from perturbation.image_perturbation import get_method_chunk
+    from dataset.grounding_dataset import grounding_pertur_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)  
+    
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    #### Model Load #### 
+    model, model_without_ddp, tokenizer = load_model_grounding(args, config, device)
+
+    ## refcoco evaluation tools
+    refer = REFER(config['refcoco_data'], 'refcoco+', 'unc')
+    dets = json.load(open(config['det_file'],'r'))
+    cocos = json.load(open(config['coco_file'],'r'))   
+        
+    #### Dataset #### 
+    for pertur in pertur_list:
+        print("Creating dataset")
+        grd_train_dataset, _ = create_dataset('grounding', config) 
+        test_dataset = grounding_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], img_pertur = pertur)
+        datasets = [grd_train_dataset, test_dataset]
+        
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler(datasets, [True, False], num_tasks, global_rank)         
+        else:
+            samplers = [None, None]
+
+        _, test_loader = create_loader(datasets,samplers,batch_size=[config['batch_size'],config['batch_size']],
+                                                    num_workers=[0,0],is_trains=[True, False], collate_fns=[None,None])
+        
+        
+         #### Wandb init #### 
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+
+        print("Start Evaluation")
+        start_time = time.time()    
+        for epoch in range(0, 1):
+            result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num, config)
+
+            results = collect_result(result, args.result_dir, 'epoch%d'%epoch, is_json=False, is_list=True)
+            
+            if utils.is_main_process():  
+                grounding_acc = grounding_eval(results, dets, cocos, refer, alpha=0.5, mask_size=24)
+                log_stats = {**{f'{k}': v for k, v in grounding_acc.items()},
+                            'epoch': epoch,
+                            'pertur_type' : 'Image', 
+                            'pertur': str(pertur).split(' ')[1]
+                        }   
+                
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")     
+                    
+                print(log_stats)
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)
+            dist.barrier()     
+            torch.cuda.empty_cache()
+        total_time = time.time() - start_time
+        total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+        print('Training time {}'.format(total_time_str))        
+        wandb.finish()
+
+
+
+def val(model, data_loader, tokenizer, device, gradcam_mode, block_num, config):
     # test
     model.eval()
             
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
     header = 'Evaluation:'
     print_freq = 50
     
@@ -151,10 +289,7 @@ def main(args, config):
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    utils.set_seed(seed)
 
     #### Dataset #### 
     print("Creating dataset")
@@ -169,43 +304,21 @@ def main(args, config):
         samplers = [None, None]
 
     train_loader, test_loader = create_loader(datasets,samplers,batch_size=[config['batch_size'],config['batch_size']],
-                                              num_workers=[4,4],is_trains=[True, False], collate_fns=[None,None])
+                                              num_workers=[0,0],is_trains=[True, False], collate_fns=[None,None])
        
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
         
     ## refcoco evaluation tools
     refer = REFER(config['refcoco_data'], 'refcoco+', 'unc')
     dets = json.load(open(config['det_file'],'r'))
     cocos = json.load(open(config['coco_file'],'r'))    
+    
+    #### Wandb #### 
+    if utils.is_main_process(): 
+        if config['wandb']['wandb_use']:
+            wandb.init(project='RobustMixGen', name=config['exp_name'], config=config)
 
     #### Model #### 
-    print("Creating model")
-    model = ALBEF(config = config, text_encoder=args.text_encoder, tokenizer=tokenizer)
-    
-    if args.checkpoint:    
-        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        state_dict = checkpoint['model']
-        pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
-        state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
-        m_pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder_m.pos_embed'],model.visual_encoder_m)   
-        state_dict['visual_encoder_m.pos_embed'] = m_pos_embed_reshaped 
-        
-        for key in list(state_dict.keys()):
-            if 'bert' in key:
-                encoder_key = key.replace('bert.','')         
-                state_dict[encoder_key] = state_dict[key] 
-                del state_dict[key]                
-        msg = model.load_state_dict(state_dict,strict=False)  
-        
-        print('load checkpoint from %s'%args.checkpoint)
-        print(msg)          
-    
-    model = model.to(device)   
-    
-    model_without_ddp = model
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module   
+    model, model_without_ddp, tokenizer = load_model_grounding(args, config, device)
     
     arg_opt = utils.AttrDict(config['optimizer'])
     optimizer = create_optimizer(arg_opt, model)
@@ -224,39 +337,35 @@ def main(args, config):
                 train_loader.sampler.set_epoch(epoch)
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
             
-        result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num)
+        result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num, config)
 
         results = collect_result(result, args.result_dir, 'epoch%d'%epoch, is_json=False, is_list=True)
 
         if utils.is_main_process():  
             
             grounding_acc = grounding_eval(results, dets, cocos, refer, alpha=0.5, mask_size=24)
-            
-            if args.evaluate:      
-                log_stats = {**{f'{k}': v for k, v in grounding_acc.items()},
-                             'epoch': epoch,
-                            }                   
-            else:             
-                log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                             **{f'{k}': v for k, v in grounding_acc.items()},
-                             'epoch': epoch,
-                            }      
-                if grounding_acc['val_d']>best:
-                    save_obj = {
-                        'model': model_without_ddp.state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'lr_scheduler': lr_scheduler.state_dict(),
-                        'config': config,
-                        'epoch': epoch,
-                    }
-                    torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
-                    best = grounding_acc['val_d']
-            
-            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
-                f.write(json.dumps(log_stats) + "\n") 
+
+
+            log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
+                            **{f'{k}': v for k, v in grounding_acc.items()},
+                            'epoch': epoch,
+                        }      
+            if grounding_acc['val_d']>best:
+                save_obj = {
+                    'model': model_without_ddp.state_dict(),
+                    'optimizer': optimizer.state_dict(),
+                    'lr_scheduler': lr_scheduler.state_dict(),
+                    'config': config,
+                    'epoch': epoch,
+                }
+                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
+                best = grounding_acc['val_d']
                 
-        if args.evaluate: 
-            break                
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)
+            
+            with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
+                f.write(json.dumps(log_stats) + "\n") 
         
         lr_scheduler.step(epoch+warmup_steps+1)  
         dist.barrier()   
