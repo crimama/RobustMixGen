@@ -75,8 +75,13 @@ def parser():
         cfg = OmegaConf.merge(cfg, cfg_task)
     
     # Update experiment name
-    cfg.data_name = cfg.image_root.split('/')[2]
-    cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
+    
+    if cfg.TASK =='VQA':
+        cfg.data_name = cfg.vqa_root.split('/')[2] + '&' + cfg.vg_root.split('/')[2]
+        cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
+    else:
+        cfg.data_name = cfg.image_root.split('/')[2]
+        cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
     
     # update cfg
     for k, v in zip(args.opts[0::2], args.opts[1::2]):
@@ -88,7 +93,10 @@ def parser():
             
     
     # Output dir 
-    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2])
+    if cfg.TASK == 'VQA':
+        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
+    else:
+        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2])
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  
@@ -103,11 +111,18 @@ def jupyter_parser(default_setting:str=None, task_setting:str=None):
         cfg = OmegaConf.merge(cfg, cfg_task)
     
     # Update experiment name
-    cfg.data_name = cfg.image_root.split('/')[2]
-    cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
+    if cfg.TASK =='VQA':
+        cfg.data_name = cfg.vqa_root.split('/')[2] + '&' + cfg.vg_root.split('/')[2]
+        cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
+    else:
+        cfg.data_name = cfg.image_root.split('/')[2]
+        cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
     
     # Output dir 
-    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2])
+    if cfg.TASK == 'VQA':
+        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
+    else:
+        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2])
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  
