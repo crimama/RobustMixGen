@@ -10,8 +10,8 @@ class txt_aug_function:
         self.txt_pertur = txt_pertur 
         self.txt_pertur_list = get_method_chunk_train()
         
-    def __call__(self, obj_info, bg_info):
-        caption = self.txt_method(obj_info, bg_info)
+    def __call__(self, obj_captions:list, bg_captions:list) -> str:
+        caption = self.txt_method(obj_captions, bg_captions)
         if self.txt_pertur:
             pertur = np.random.choice(self.txt_pertur_list)
             caption = pertur(caption)
@@ -38,18 +38,18 @@ def replace_word(captions,bg_cats,obj_cats):
         caption = random.choice(obj_cats) + " " + caption
     return caption 
 
-def concat(obj_info,bg_info):    
-    text = np.random.choice([a + ' ' + b for a,b in zip(bg_info['captions'],obj_info['captions'])])
+def concat(obj_captions:list, bg_captions:list):    
+    text = np.random.choice([a + ' ' + b for a,b in zip(bg_captions,obj_captions)])
     return text 
 
-def conjunction_concat(obj_info,bg_info):
+def conjunction_concat(obj_captions:list, bg_captions:list):
     conjunction_list = ['and', 'also', 'as well as', 'moreover', 'furthermore', 'in addition', 'besides', 'similarly', 'likewise', 'consequently', 'therfore', 'thus', 'hence']
     conjunction = np.random.choice(conjunction_list)
-    text = np.random.choice([a.split('.')[0] + ' ' +conjunction+' '+ b for a,b in zip(bg_info['captions'],obj_info['captions'])])
+    text = np.random.choice([a.split('.')[0] + ' ' +conjunction+' '+ b for a,b in zip(bg_captions,obj_captions)])
     return text 
 
-def mix_concat(obj_info,bg_info):
-    obj_cap, bg_cap = np.random.choice(obj_info['captions']), np.random.choice(bg_info['captions'])
+def mix_concat(obj_captions:list, bg_captions:list):
+    obj_cap, bg_cap = np.random.choice(obj_captions), np.random.choice(bg_captions)
     obj_cap_split = [obj_cap.split(" ")[i:i+3] for i in range(0, len(obj_cap.split(" ")), 3)]
     bg_cap_split = [bg_cap.split(" ")[i:i+3] for i in range(0, len(bg_cap.split(" ")), 3)]
 
@@ -57,10 +57,10 @@ def mix_concat(obj_info,bg_info):
     result = " ".join(item for sublist in result for item in sublist)
     return result
 
-def txt_shuffle(obj_info,bg_info):
+def txt_shuffle(obj_captions:list, bg_captions:list):
     txt1 = txt1.split(' ')
     txt2 = txt2.split(' ')
-    new_txt = list(chain(*zip(bg_info['captions'],obj_info['captions'])))
+    new_txt = list(chain(*zip(bg_captions,obj_captions)))
     
     if len(txt1) > len(txt2):
         new_txt = " ".join(new_txt + txt1[int(len(new_txt)/2):])
