@@ -56,7 +56,8 @@ def create_dataset(dataset, config):
                                         image_root     = config['image_root'], 
                                         romixgen       = romixgen,                                    # romixgen object 
                                         romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                        romixgen_prob = config['romixgen']['base']['romixgen_prob']   # probability for augmentation 
+                                        romixgen_prob  = config['romixgen']['base']['romixgen_prob'],   # probability for augmentation 
+                                        dataset        = config['dataset']
                                         )
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root']) 
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
@@ -88,13 +89,25 @@ def create_dataset(dataset, config):
         return train_dataset, vqa_test_dataset
 
     elif dataset=='nlvr':   
-        train_dataset = nlvr_dataset(config['train_file'], train_transform, config['image_root'])  
+        train_dataset = nlvr_dataset(ann_file      = config['train_file'], 
+                                     transform     = train_transform,
+                                     image_root    = config['image_root'],
+                                     romixgen      = romixgen,
+                                     romixgen_true = config['romixgen']['base']['romixgen_true'],
+                                     romixgen_prob = config['romixgen']['base']['romixgen_prob']
+                                     )  
         val_dataset = nlvr_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = nlvr_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset        
                
-    elif dataset=='ve':   
-        train_dataset = ve_dataset(config['train_file'], train_transform, config['image_root'])  
+    elif dataset=='ve':           
+        train_dataset = ve_dataset(ann_file       = config['train_file'],
+                                    transform      = train_transform,
+                                    image_root     = config['image_root'],
+                                    romixgen       = romixgen,                                    # romixgen object 
+                                    romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
+                                    romixgen_prob  = config['romixgen']['base']['romixgen_prob']  # probability for augmentation 
+                                    )
         val_dataset = ve_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = ve_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset     
