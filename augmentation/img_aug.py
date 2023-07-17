@@ -4,6 +4,9 @@ import cv2
 from PIL import Image 
 
 class img_aug_function:
+    '''
+    bbox : X,Y,H,W
+    '''
     def __init__(self, image_root:str, transform, image_mix_ratio:float):
     
         # Image 
@@ -47,6 +50,11 @@ class img_aug_function:
         return obj_img, bg_img, resized_bbox
     
     def cutmixup(self,obj_info,bg_info):
+        '''
+        info 가 필요한 항목 
+            - file_name
+            - max_obj_bbox
+        '''
         # Preprocess for synthesize new image 
         obj_img, bg_img, obj_bbox = self.__load_resize__(obj_info,bg_info,(512,512))   # resize image 
         obj_img_obj = self.__cut_obj__(obj_bbox, obj_img, "obj")                 

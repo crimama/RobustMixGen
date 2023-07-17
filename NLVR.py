@@ -1,6 +1,6 @@
 import argparse
 import os
-import ruamel_yaml as yaml
+import ruamel.yaml as yaml
 import numpy as np
 import random
 import time
@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import json
 import pickle
+import wandb 
 
 import torch
 import torch.nn as nn
@@ -17,7 +18,7 @@ from torch.utils.data import DataLoader
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 
-from models.model_nlvr import ALBEF
+from models import load_model_nlvr
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
 
@@ -31,7 +32,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
     metric_logger.add_meter('loss', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
 
@@ -96,7 +97,129 @@ def evaluate(model, data_loader, tokenizer, device, config):
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())   
     return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
+
+def eval_image(args, config):
+    from perturbation.image_perturbation import get_method_chunk
+    from dataset.nlvr_dataset import nlvr_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)    
     
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    model, model_without_ddp, tokenizer = load_model_nlvr(args, config, device)
+    
+    #### Dataset #### 
+    print("Creating dataset")
+    train_dataset, val_dataset, _ = create_dataset('nlvr', config)  
+    for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
+        print(pertur)
+        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler([train_dataset, val_dataset, test_dataset], [True, False, False], num_tasks, global_rank)         
+        else:
+            samplers = [None, None, None]
+
+        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+                                                num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
+
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+                
+        #### Evaluation #### 
+        print("Start Evaluation")
+        start_time = time.time()  
+        for epoch in range(0,1):
+            val_stats = evaluate(model, val_loader, tokenizer, device, config)
+            test_stats = evaluate(model, test_loader, tokenizer, device, config)
+            
+            if utils.is_main_process():  
+                log_stats = {**{f'val_{k}': v for k, v in val_stats.items()},
+                            **{f'test_{k}': v for k, v in test_stats.items()},
+                            'epoch': epoch,
+                            'pertur_type' : 'Text',
+                            'pertur' : str(pertur).split(' ')[1]
+                            }
+            
+            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)    
+        
+        dist.barrier()   
+                
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Training time {}'.format(total_time_str))     
+    
+def eval_text(args, config):
+    from perturbation.text_perturbation import get_method_chunk
+    from dataset.nlvr_dataset import nlvr_dataset
+    pertur_list = get_method_chunk()
+    utils.init_distributed_mode(args)    
+    
+    device = torch.device(args.device)
+    
+    # fix the seed for reproducibility
+    utils.set_seed(args.seed + utils.get_rank())
+    
+    model, model_without_ddp, tokenizer = load_model_nlvr(args, config, device)
+    
+    #### Dataset #### 
+    print("Creating dataset")
+    train_dataset, val_dataset, _ = create_dataset('nlvr', config)  
+    for pertur in pertur_list:
+        config['pertur'] = str(pertur).split(' ')[1]
+        print(pertur)
+        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        
+        if args.distributed:
+            num_tasks = utils.get_world_size()
+            global_rank = utils.get_rank()            
+            samplers = create_sampler([train_dataset, val_dataset, test_dataset], [True, False, False], num_tasks, global_rank)         
+        else:
+            samplers = [None, None, None]
+
+        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+                                                num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
+
+        if utils.is_main_process(): 
+            if config['wandb']['wandb_use']:
+                wandb.init(project="RobustMixGen",name=config['exp_name']+'-'+str(pertur).split(' ')[1],config=config)
+                
+        #### Evaluation #### 
+        print("Start Evaluation")
+        start_time = time.time()  
+        for epoch in range(0,1):
+            val_stats = evaluate(model, val_loader, tokenizer, device, config)
+            test_stats = evaluate(model, test_loader, tokenizer, device, config)
+            
+            if utils.is_main_process():  
+                log_stats = {**{f'val_{k}': v for k, v in val_stats.items()},
+                            **{f'test_{k}': v for k, v in test_stats.items()},
+                            'epoch': epoch,
+                            'pertur_type' : 'Text',
+                            'pertur' : str(pertur).split(' ')[1]
+                            }
+            
+            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                f.write(json.dumps(log_stats) + "\n")
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)    
+        
+        dist.barrier()   
+                
+    total_time = time.time() - start_time
+    total_time_str = str(datetime.timedelta(seconds=int(total_time)))
+    print('Training time {}'.format(total_time_str))     
+            
     
 def main(args, config):
     utils.init_distributed_mode(args)    
@@ -105,10 +228,7 @@ def main(args, config):
 
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    utils.set_seed(args.seed + utils.get_rank())
 
     #### Dataset #### 
     print("Creating dataset")
@@ -122,35 +242,16 @@ def main(args, config):
         samplers = [None, None, None]
 
     train_loader, val_loader, test_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']]*3,
-                                              num_workers=[4,4,4],is_trains=[True,False,False], collate_fns=[None,None,None])
+                                              num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
 
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
-
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        if config['wandb']['wandb_use']:
+            wandb.init(project="RobustMixGen",name=config['exp_name'],config=config)
+            
     #### Model #### 
     print("Creating model")
-    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer)
-    
-    if args.checkpoint:    
-        checkpoint = torch.load(args.checkpoint, map_location='cpu') 
-        state_dict = checkpoint['model']
-        
-        # reshape positional embedding to accomodate for image resolution change
-        pos_embed_reshaped = interpolate_pos_embed(state_dict['visual_encoder.pos_embed'],model.visual_encoder)         
-        state_dict['visual_encoder.pos_embed'] = pos_embed_reshaped
-        
-        if config['distill']:
-            model.copy_params()
-            
-        msg = model.load_state_dict(state_dict,strict=False)
-        print('load checkpoint from %s'%args.checkpoint)
-        print(msg)
-
-    model = model.to(device)   
-    
-    model_without_ddp = model
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module    
+    model, model_without_ddp, tokenizer = load_model_nlvr(args, config, device)
     
     arg_opt = utils.AttrDict(config['optimizer'])
     optimizer = create_optimizer(arg_opt, model)
@@ -192,8 +293,10 @@ def main(args, config):
                 best = float(val_stats['acc'])
                 best_epoch = epoch
             
-            with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+            with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)    
         
         lr_scheduler.step(epoch+warmup_steps+1)  
         dist.barrier()   
@@ -203,7 +306,7 @@ def main(args, config):
     print('Training time {}'.format(total_time_str)) 
     
     if utils.is_main_process():   
-        with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
+        with open(os.path.join(args.output_dir, "main_log.txt"),"a") as f:
             f.write("best epoch: %d"%best_epoch)               
 
 if __name__ == '__main__':

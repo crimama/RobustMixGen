@@ -36,17 +36,16 @@ perturb: False
 #romixgen -> fix 
 romixgen:
   base:
-    romixgen_true: False 
-    romixgen_ratio: 0.5 
+    romixgen_true: True 
+    romixgen_prob: 0.5 
     obj_bg_threshold : 0.01
-    bg_center_threshold : 0.7
-    obj_bg_mix_ratio : 0.5
-    img_info_json : '../data/COCO/Annotations/coco_img_info.json'
+    img_mix_ratio : 0.5
+    img_info_json : '../data/json_downstream/Retrieval/romixgen_retrieval_coco.json'
   image:
     method: 'cutmixup' # ['cutmixup', 'paste']
     hard_aug: True
   text:
-    method: 'conjconcat' # ['replace','concat','captioning','conjconcat','txtshuffle','mixconcat']
+    method: 'conjunction_concat' # ['replace','concat','captioning','conjunction_concat','txtshuffle','mixconcat']
     backtrans: False
     txt_aug: True 
 wandb:

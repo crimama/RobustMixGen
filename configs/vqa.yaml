@@ -23,6 +23,9 @@ schedular: {sched: cosine, lr: 2e-5, epochs: 8, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-
-
-
+romixgen:
+  base:
+    vg_info_dir: '../data/json_downstream/VQA/romixgen_vqa_vg.json'
+    vqa_info_dir: '../data/json_downstream/VQA/romixgen_vqa_vqa20.json'
+    vqa_obj_bg_threshold: 0.25
+    vg_obj_bg_threshold: 0.25

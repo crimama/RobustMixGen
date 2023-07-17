@@ -1,1 +1,1 @@
-from .factory import load_model_retrieval, load_model_ve, load_model_vqa, load_model_grounding
+from .factory import load_model_retrieval, load_model_ve, load_model_vqa, load_model_grounding, load_model_nlvr

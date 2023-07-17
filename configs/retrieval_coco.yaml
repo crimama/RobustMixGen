@@ -1,5 +1,5 @@
 TASK : Retrieval 
-
+dataset: coco
 train_file: ['../data/json_downstream/Retrieval/coco_train.json']
 val_file: '../data/json_downstream/Retrieval/coco_val.json'                
 test_file: '../data/json_downstream/Retrieval/coco_test.json'
