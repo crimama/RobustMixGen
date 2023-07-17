@@ -3,7 +3,7 @@ train_file: '../data/json_downstream/VE/ve_train.json'
 val_file: '../data/json_downstream/VE/ve_dev.json'                
 test_file: '../data/json_downstream/VE/ve_test.json'
 
-image_root: '../data/Flickr30K/images'
+image_root: '../data/Flickr30K/Images'
 
 
 
@@ -16,5 +16,6 @@ schedular: {sched: cosine, lr: 2e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-
-
+romixgen:
+  base:
+    img_info_json : '../data/json_downstream/VE/romixgen_ve.json'

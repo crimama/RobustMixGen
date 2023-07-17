@@ -2,7 +2,7 @@ TASK : Retrieval
 train_file:  ['../data/json_downstream/Retrieval/flickr30k_train.json']
 val_file: '../data/json_downstream/Retrieval/flickr30k_val.json'                
 test_file: '../data/json_downstream/Retrieval/flickr30k_test.json'
-image_root: '../data/Flickr30K/images' #flickr30k-images/
+image_root: '../data/Flickr30K/Images' #flickr30k-images/
 
 bert_config: 'configs/config_bert.json'
 
@@ -11,6 +11,11 @@ k_test: 128
 alpha: 0.4
 distill: True
 warm_up: True
+dataset: 'flickr' 
+
+romixgen:
+  base:
+    img_info_json : '../data/json_downstream/Retrieval/romixgen_retrieval_flickr.json'
 
 
 
