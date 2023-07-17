@@ -1,0 +1,30 @@
+TASK: NLVR
+args:
+  checkpoint: './output/NLVR/Pretrain/pretrain_model_nlvr.pth'
+train_file: ['../data/json_downstream/NLVR/nlvr_train.json']
+val_file: ['../data/json_downstream/NLVR/nlvr_dev.json']                  
+test_file: ['../data/json_downstream/NLVR/nlvr_test.json']  
+
+image_root: '../data/NLVR2/Images' 
+
+batch_size: 2
+
+bert_config: 'configs/config_bert.json'
+
+
+eval_ema: False
+
+optimizer: {opt: adamW, lr: 2e-5, weight_decay: 0.02}
+schedular: {sched: cosine, lr: 2e-5, epochs: 10, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
+
+
+
+
+
+romixgen:
+  base:
+    img_info_json : '../data/json_downstream/NLVR/romixgen_nlvr2.json'
+    romixgen_true: True 
+    romixgen_prob: 0.5 
+    obj_bg_threshold : 0.5
+    img_mix_ratio : 0.5
