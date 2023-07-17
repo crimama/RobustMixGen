@@ -5,7 +5,7 @@ import pandas as pd
 from .txt_aug import txt_aug_function 
 from .img_aug import img_aug_function
 
-class BaseRomixgen:
+class BaseRomixgen:    
     def __init__(self, image_info_dir: str, image_root:str, transform, image_mix_ratio:float,
                     txt_method:str, txt_pertur:bool, obj_bg_threshold:float):
         
@@ -30,10 +30,10 @@ class BaseRomixgen:
                     image_info[key]["obj_bg"] = 'obj' if max_obj_area_portion > obj_bg_threshold else 'bg'
                 else:
                     image_info[key]['mop'] = 0 
-                    image_info[key]['obj_bg'] = 'Unusuable'
+                    image_info[key]['obj_bg'] = 'bg'
             else:
                 image_info[key]['mop'] = 0 
-                image_info[key]['obj_bg'] = 'Unusuable'
+                image_info[key]['obj_bg'] = 'bg'
                 
             # Obj / Bg 분류 
         return image_info 
@@ -50,7 +50,7 @@ class BaseRomixgen:
         obj_bg[1] = obj_bg[1].apply(lambda x : x.split('_')[-1].lstrip('0').split('.jpg')[0]) #Image id 전처리 
         get_obj_bg_pool = {
                         'obj': list(obj_bg[obj_bg[0] == 'obj'][1].values),
-                        'bg' : list(obj_bg[obj_bg[0] == 'obj'][1].values),
+                        'bg' : list(obj_bg[obj_bg[0] == 'bg'][1].values),
                         }
         return get_obj_bg_pool
     
