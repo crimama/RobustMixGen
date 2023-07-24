@@ -12,6 +12,7 @@ alpha: 0.4
 distill: True
 warm_up: True
 dataset: 'flickr' 
+schedular: {sched: cosine, lr: 1e-5, epochs: 10, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
 
 romixgen:
   base:

@@ -12,7 +12,7 @@ coco_file: '../data/json_downstream/Grounding/refcoco+/cocos.json'
 
 image_root: '../data/COCO/Images'
 
-batch_size: 2
+batch_size: 64
 
 
 romixgen:
