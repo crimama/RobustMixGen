@@ -90,13 +90,33 @@ def parser():
         else:
             
             OmegaConf.update(cfg, k, convert_type(v), merge=True)  
-            
+    
+    # update exp_name in case romixgen 
+    if cfg['romixgen']['base']['romixgen_true']:
+        cfg.exp_name = f'{cfg.exp_name}-romixgen'
+    else:
+        pass 
+    
+    if cfg['mixgen']:
+        cfg.exp_name = f'{cfg.exp_name}-mixgen'
+    else:
+        pass 
     
     # Output dir 
     if cfg.TASK == 'VQA':
         cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
     else:
-        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2])
+        if cfg['romixgen']['base']['romixgen_true']:
+            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'romixgen')
+            
+        elif cfg['mixgen']:
+            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'mixgen')
+            
+        else:
+            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'clean')
+    
+    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir,cfg.exp_name)
+        
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  
