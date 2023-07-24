@@ -76,7 +76,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}  
 
 
 
@@ -231,7 +231,7 @@ def eval_text(args, config):
     from dataset.caption_dataset import re_eval_perturb_dataset
     from perturbation.text_perturbation import get_method_chunk
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
         
     device = torch.device(args.device)
     print(device)
@@ -302,7 +302,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.caption_dataset import re_eval_perturb_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
         
     device = torch.device(args.device)
 
@@ -371,7 +371,7 @@ def eval_image(args, config):
         wandb.finish()
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
