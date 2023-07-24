@@ -100,7 +100,7 @@ def eval_text(args, config):
     from dataset.vqa_dataset import vqa_pertur_dataset
     
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -156,7 +156,7 @@ def eval_image(args, config):
     from dataset.vqa_dataset import vqa_pertur_dataset
     
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -208,7 +208,7 @@ def eval_image(args, config):
         wandb.finish()
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
