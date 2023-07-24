@@ -102,7 +102,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.nlvr_dataset import nlvr_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -163,7 +163,7 @@ def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.nlvr_dataset import nlvr_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -222,7 +222,7 @@ def eval_text(args, config):
             
     
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
