@@ -65,13 +65,13 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}  
 
 def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)  
+      
     
     device = torch.device(args.device)
     
@@ -141,7 +141,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)  
+      
     
     device = torch.device(args.device)
     
@@ -283,7 +283,7 @@ def val(model, data_loader, tokenizer, device, gradcam_mode, block_num, config):
 
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
