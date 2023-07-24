@@ -40,7 +40,7 @@ stop_words = ['i', 'me', 'my', 'myself', 'we', 'our',
 def split_words(sentence):
     sentence = get_only_chars(sentence)
     words = sentence.split(' ')
-    words = [word for word in words if word is not '']
+    words = [word for word in words if word != '']
     num_words = len(words)
     return words, num_words 
 
@@ -162,7 +162,7 @@ def word_deletion(sentence,alpha=0.1):
     #if you end up deleting all words, just return a random word
     if len(new_words) == 0:
         rand_int = random.randint(0, len(words)-1)
-        return [words[rand_int]]
+        return words[rand_int]
 
     return concat(new_words)
     
@@ -228,6 +228,7 @@ def backtrans(sentence):
 
 method_chunk = [word_synonym_replacement,word_insertion,word_swap,word_deletion,word_insert_punctuation,
                 char_keyboard,char_ocr,char_insert,char_substitute,char_swap,char_delete]
+
 train_chunk = method_chunk 
 
 def get_method_chunk():
