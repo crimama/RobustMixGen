@@ -1,53 +1,10 @@
-#! Pretrain 
-#python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain.py --config ./configs/Pretrain.yaml 
-
-# #! Image Retrieval - coco 
-#CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 python -m torch.distributed.launch --nproc_per_node=8 --use_env Retrieval.py \
-#    --config ./configs/Retrieval_coco_mixgen.yaml --output_dir output/Retrieval_coco_mixgen_4m \
-#    --checkpoint ./output/Pretrain/ALBEF_4M.pth
-
-# CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
-#     --config ./configs/default.yaml --output_dir output/Retrieval_coco_small_0.0001_romix_test \
-#     --checkpoint ./output/Pretrain/ALBEF_4M.pth
-
-#! Image Retrieval eval - coco 
-#  CUDA_VISIBLE_DEVICES=0,1 python -m torch.distributed.launch --nproc_per_node=2 --use_env Retrieval.py \
-#      --config ./configs/Retrieval_coco.yaml --output_dir output/Retrieval_coco \
-#      --checkpoint ./output/Retrieval_coco/checkpoint_4.pth --evaluate true 
 
 
-#! VQA 
-# python -m torch.distributed.launch --nproc_per_node=2 --use_env VQA.py \
-#     --config ./configs/VQA.yaml \
-#     --output_dir output/VQA \
-#     --checkpoint ./output/Pretrain/ALBEF.pth
-
-#!  SNLI-VE : Visual Entailment 
-#python -m torch.distributed.launch --nproc_per_node=2 --use_env VE.py \
-#    --config ./configs/VE.yaml \
-#    --output_dir output/VE \
-#   --checkpoint ./output/Pretrain/ALBEF.pth
-
-#! NLVR
-# python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain_nlvr.py \
-#     --config ./configs/NLVR_pretrain.yaml \
-#     --output_dir output/NLVR_pretrain \
-#     --checkpoint ./output/Pretrain/ALBEF.pth
-
-#! Visual Grounding 
-# python -m torch.distributed.launch --nproc_per_node=2 --use_env Pretrain_nlvr.py \
-#     --config ./configs/NLVR_pretrain.yaml \
-#     --output_dir output/NLVR_pretrain \
-#     --checkpoint ./output/Pretrain/ALBEF.pth
 
 
-#! Test 
-python -m torch.distributed.launch --nproc_per_node=2 --use_env main.py \
-    --default_setting ./configs/default.yaml \
-    --task_setting ./configs/retrieval.yaml \
-    batch_size_train 2 wandb.wandb_use False args.evaluate True 
-    
-# python main.py \
-#     --default_setting ./configs/default.yaml \
-#     --task_setting ./configs/retrieval.yaml \
-#     batch_size_train 2 wandb.wandb_use False 
+CUDA_VISIBLE_DEVICES=0,1,2,3 python -m torch.distributed.launch --nproc_per_node=4 --use_env main.py --default_setting ./configs/default.yaml --task_setting ./configs/ve.yaml \
+batch_size_train 64 \
+romixgen.base.romixgen_true True \
+romixgen.image.hard_aug True \
+mixgen False \
+exp_name add-hard-aug
