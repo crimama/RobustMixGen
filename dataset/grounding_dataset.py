@@ -70,17 +70,14 @@ class grounding_pertur_dataset(grounding_dataset):
         self.img_pertur = pertur_check(img_pertur)
         self.txt_pertur = pertur_check(txt_pertur)
         
-    def get_transform(self, img_res):
+    def get_transform(self):
         normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-        train_transform = transforms.Compose([                        
-                transforms.Resize((img_res,img_res),interpolation=Image.BICUBIC),
-                transforms.RandomHorizontalFlip(),
-                RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                                    'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
-                transforms.ToTensor(),
-                normalize,
-            ])        
-        return train_transform 
+        test_transform      = transforms.Compose([
+                                                transforms.Resize((self.img_size,self.img_size),interpolation=Image.BICUBIC),
+                                                transforms.ToTensor(),
+                                                normalize,
+                                                ])
+        return test_transform
     
     def __getitem__(self, index):
         ann = self.ann[index]
