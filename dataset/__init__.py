@@ -128,7 +128,7 @@ def create_dataset(dataset, config):
                                             romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
                                             romixgen_prob  = config['romixgen']['base']['romixgen_prob']  # probability for augmentation 
                                             )
-        test_dataset = grounding_dataset(ann_file      = config['train_file'],
+        test_dataset = grounding_dataset(ann_file      = config['test_file'],
                                         transform      = test_transform,
                                         image_root     = config['image_root'],
                                         romixgen       = romixgen,                  # romixgen object 
