@@ -188,26 +188,8 @@ def grounding_eval(results,dets,cocos,refer,alpha,mask_size=24):
             if IoU_det >= 0.5:   
                 correct_val_d += 1    
     
-    # 임시 장치 
-    # eval_result = {'val_d':correct_val_d/num_val,'testA_d':correct_A_d/num_A,'testB_d':correct_B_d/num_B}        
     
-    if num_val == 0:
-        correct_val_d = 0 
-    else: 
-        correct_val_d = correct_val_d/num_val 
-        
-    if num_A == 0:
-        correct_A_d = 0 
-    else: 
-        correct_A_d = correct_val_d/num_A 
-        
-    if num_B == 0:
-        correct_B_d = 0 
-    else: 
-        correct_B_d = correct_val_d/num_B 
-    
-    eval_result = {'val_d':correct_val_d,'testA_d':correct_A_d,'testB_d':correct_B_d}        
-    
+    eval_result = {'val_d':correct_val_d/num_val,'testA_d':correct_A_d/num_A,'testB_d':correct_B_d/num_B}            
     for metric, acc in eval_result.items():
         print(f'{metric}: {acc:.3f}')
         
