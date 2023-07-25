@@ -71,8 +71,7 @@ def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
-      
-    
+            
     device = torch.device(args.device)
     
     # fix the seed for reproducibility
@@ -218,6 +217,7 @@ def val(model, data_loader, tokenizer, device, gradcam_mode, block_num, config):
     print_freq = 50
     
     if gradcam_mode=='itm':
+        # 중간에 찍힌 attention score map을 저장하도록 하는 option 
         model.text_encoder.base_model.base_model.encoder.layer[block_num].crossattention.self.save_attention = True
      
     result = []
@@ -336,9 +336,11 @@ def main(args, config):
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
-            
+        
+        # gradcam 추출    
         result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num, config)
-
+        
+        # 분산 처리에서 나온 결과 main으로 병합 
         results = collect_result(result, args.result_dir, 'epoch%d'%epoch, is_json=False, is_list=True)
 
         if utils.is_main_process():  
