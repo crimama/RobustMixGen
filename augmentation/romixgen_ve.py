@@ -20,6 +20,10 @@ class VERomixgen:
         '''
         Image info 파일 load 하면서 각 obj, bg로 분류 
         '''
+        
+        if type(obj_bg_threshold) !=list:
+            obj_bg_threshold = [obj_bg_threshold, 1.0]
+        
         image_info = json.load(open(image_info_dir))
         for key in image_info.keys():
             # BBOX 영역 비율 계산 
@@ -28,7 +32,7 @@ class VERomixgen:
                     img_width, img_height = int(image_info[key]["width"]), int(image_info[key]["height"])
                     max_obj_area_portion = cal_area_portion(image_info[key]['max_obj_bbox'],img_width, img_height)
                     image_info[key]['mop'] = max_obj_area_portion
-                    image_info[key]["obj_bg"] = 'obj' if (max_obj_area_portion >= obj_bg_threshold[0]) & (max_obj_area_portion <= obj_bg_threshold[1]) else 'bg'
+                    image_info[key]["obj_bg"] = 'obj' if (obj_bg_threshold[0] <= max_obj_area_portion <= obj_bg_threshold[1]) else 'bg'
                 else:
                     image_info[key]['mop'] = 0 
                     image_info[key]['obj_bg'] = 'bg'
