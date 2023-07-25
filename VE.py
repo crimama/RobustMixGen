@@ -290,11 +290,21 @@ def main(args, config):
     warmup_steps = config['schedular']['warmup_epochs']
     best = 0
     best_epoch = 0
+    start_epoch = 0
+    
+    #### load checkpoint #### 
+    if config.args.checkpoint != './output/Pretrain/ALBEF_4M.pth':
+        checkpoint = torch.load(config.args.checkpoint, map_location='cpu')
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        start_epoch = checkpoint['epoch']+1
+        print('All checkpoint loaded')
+        
     
     print("Start training")
     start_time = time.time()
     
-    for epoch in range(0, max_epoch):
+    for epoch in range(start_epoch, max_epoch):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
