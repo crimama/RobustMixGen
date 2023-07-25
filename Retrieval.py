@@ -169,7 +169,7 @@ def evaluation(model, data_loader, tokenizer, device, config):
         score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
         score_matrix_t2i[start+i,topk_idx] = score
 
-    if args.distributed:
+    if config.args.distributed:
         dist.barrier()   
         torch.distributed.all_reduce(score_matrix_i2t, op=torch.distributed.ReduceOp.SUM) 
         torch.distributed.all_reduce(score_matrix_t2i, op=torch.distributed.ReduceOp.SUM)        
@@ -284,7 +284,7 @@ def eval_text(args, config):
                 log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
                             }
-                with open(os.path.join(args.output_dir, "Eval_txt_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
@@ -355,7 +355,7 @@ def eval_image(args, config):
                             'epoch': epoch,
                             'pertur': str(pertur).split(' ')[1]
                             }
-                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
