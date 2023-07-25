@@ -28,8 +28,8 @@ class grounding_dataset(Dataset):
         if self.mode == 'train':
             self.img_ids = {} 
             n = 0
-            for key in self.ann:
-                img_id = self.ann[key]['image'].split('/')[-1]
+            for ann in self.ann:
+                img_id = ann['image'].split('/')[-1]
                 if img_id not in self.img_ids.keys():
                     self.img_ids[img_id] = n
                     n += 1                    
