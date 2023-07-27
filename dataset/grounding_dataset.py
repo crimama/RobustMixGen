@@ -12,7 +12,7 @@ from dataset.randaugment import RandomAugment
 
 class grounding_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root,
-                romixgen: object, romixgen_true: bool, romixgen_prob: float = 0.5,
+                romixgen: object = False, romixgen_true: bool = False, romixgen_prob: float = 0.5,
                 max_words=30, mode='train'):        
         self.ann = []
         for f in ann_file:
@@ -70,10 +70,10 @@ class grounding_pertur_dataset(grounding_dataset):
         self.img_pertur = pertur_check(img_pertur)
         self.txt_pertur = pertur_check(txt_pertur)
         
-    def get_transform(self):
+    def get_transform(self, img_size):
         normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
         test_transform      = transforms.Compose([
-                                                transforms.Resize((self.img_size,self.img_size),interpolation=Image.BICUBIC),
+                                                transforms.Resize((img_size,img_size),interpolation=Image.BICUBIC),
                                                 transforms.ToTensor(),
                                                 normalize,
                                                 ])
@@ -88,5 +88,6 @@ class grounding_pertur_dataset(grounding_dataset):
         image = self.transform(Image.fromarray(image).convert('RGB'))     
         
         caption = pre_caption(ann['text'], self.max_words)
+        caption = self.txt_pertur(caption)
         
         return image, caption, ann['ref_id']
