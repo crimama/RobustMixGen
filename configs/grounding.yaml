@@ -2,6 +2,7 @@ TASK: Grounding
 args:
   gradcam_mode: itm
   block_num: 8 
+  evaluate: True
 
 train_file: ['../data/json_downstream/Grounding/refcoco+_train.json']
 test_file: ['../data/json_downstream/Grounding/refcoco+_val.json','../data/json_downstream/Grounding/refcoco+_test.json']
@@ -17,5 +18,6 @@ batch_size: 64
 
 romixgen:
   base:
+    romixgen_true: False
     img_info_json : '../data/json_downstream/Grounding/romixgen_grounding.json'
     obj_bg_threshold : [0.3,0.6]
