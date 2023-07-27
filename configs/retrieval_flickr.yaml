@@ -17,6 +17,7 @@ schedular: {sched: cosine, lr: 1e-5, epochs: 10, min_lr: 1e-6, decay_rate: 1, wa
 romixgen:
   base:
     img_info_json : '../data/json_downstream/Retrieval/romixgen_retrieval_flickr.json'
+    obj_bg_threshold : [0.3,0.6]
 
 
 
