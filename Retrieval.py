@@ -1,5 +1,4 @@
 import warnings
-warnings.filterwarnings("ignore")
 import argparse
 import os
 import ruamel.yaml as yaml
@@ -32,7 +31,7 @@ from augmentation import mixgen as mg
 import nlpaug.augmenter.word as naw
 from lavis.models import load_model_and_preprocess as create_caption_model
 from arguments import parser 
-
+from augmentation import mixgen 
 
 
 
@@ -51,6 +50,11 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):        
         
+        # Mixgen 
+        if config['mixgen']:
+            num = int(data_loader.batch_size/2)
+            image,text = mixgen(image,list(text),num)
+            
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
         text_input = tokenizer(text, padding='longest', max_length=30, return_tensors="pt").to(device)  
@@ -283,6 +287,8 @@ def eval_text(args, config):
                 
                 log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Text',
+                            'pertur' : str(pertur).split(' ')[1]
                             }
                 with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
@@ -293,7 +299,7 @@ def eval_text(args, config):
             dist.barrier()     
             torch.cuda.empty_cache()
 
-        total_time = time.time() - start_time
+        total_time = time.time() - start_time 
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print('Training time {}'.format(total_time_str))        
         wandb.finish()
@@ -353,6 +359,7 @@ def eval_image(args, config):
                 
                 log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Image', 
                             'pertur': str(pertur).split(' ')[1]
                             }
                 with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
