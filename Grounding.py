@@ -86,7 +86,7 @@ def eval_text(args, config):
     cocos = json.load(open(config['coco_file'],'r'))   
         
     #### Dataset #### 
-    for pertur in pertur_list:
+    for pertur in pertur_list[5:]:
         print("Creating dataset")
         grd_train_dataset, _ = create_dataset('grounding', config) 
         test_dataset = grounding_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur = pertur)
@@ -119,7 +119,7 @@ def eval_text(args, config):
                 grounding_acc = grounding_eval(results, dets, cocos, refer, alpha=0.5, mask_size=24)
                 log_stats = {**{f'{k}': v for k, v in grounding_acc.items()},
                             'epoch': epoch,
-                            'pertur_type' : 'Image', 
+                            'pertur_type' : 'Text', 
                             'pertur': str(pertur).split(' ')[1]
                         }   
                 
