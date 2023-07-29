@@ -75,7 +75,7 @@ def evaluate(model, data_loader, tokenizer, device, config):
     # test
     model.eval()
             
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
 
     header = 'Evaluation:'
     print_freq = 50
@@ -100,7 +100,7 @@ def evaluate(model, data_loader, tokenizer, device, config):
 
 def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
-    from dataset.nlvr_dataset import nlvr_dataset
+    from dataset.nlvr_dataset import nlvr_pertur_dataset
     pertur_list = get_method_chunk()
         
     
@@ -113,11 +113,12 @@ def eval_image(args, config):
     
     #### Dataset #### 
     print("Creating dataset")
-    train_dataset, val_dataset, _ = create_dataset('nlvr', config)  
+    train_dataset, _, _ = create_dataset('nlvr', config)  
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        val_dataset = nlvr_pertur_dataset(config['val_file'],config['image_res'],config['image_root'], img_pertur=pertur)
+        test_dataset = nlvr_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], img_pertur=pertur)
         
         if args.distributed:
             num_tasks = utils.get_world_size()
@@ -126,7 +127,7 @@ def eval_image(args, config):
         else:
             samplers = [None, None, None]
 
-        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+        _, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
                                                 num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
 
         if utils.is_main_process(): 
@@ -148,8 +149,8 @@ def eval_image(args, config):
                             'pertur' : str(pertur).split(' ')[1]
                             }
             
-            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
-                f.write(json.dumps(log_stats) + "\n")
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
             if config['wandb']['wandb_use']:
                 wandb.log(log_stats)    
         
@@ -161,7 +162,7 @@ def eval_image(args, config):
     
 def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
-    from dataset.nlvr_dataset import nlvr_dataset
+    from dataset.nlvr_dataset import nlvr_pertur_dataset
     pertur_list = get_method_chunk()
         
     
@@ -178,7 +179,7 @@ def eval_text(args, config):
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        test_dataset = nlvr_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
         
         if args.distributed:
             num_tasks = utils.get_world_size()
@@ -187,7 +188,7 @@ def eval_text(args, config):
         else:
             samplers = [None, None, None]
 
-        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+        _, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
                                                 num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
 
         if utils.is_main_process(): 
@@ -209,8 +210,8 @@ def eval_text(args, config):
                             'pertur' : str(pertur).split(' ')[1]
                             }
             
-            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
-                f.write(json.dumps(log_stats) + "\n")
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
             if config['wandb']['wandb_use']:
                 wandb.log(log_stats)    
         
