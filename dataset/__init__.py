@@ -15,6 +15,15 @@ from dataset.randaugment import RandomAugment
 
 from augmentation import create_romixgen
 
+import numbers
+import numpy as np
+import torch
+import torch.nn.functional as F
+import cv2 
+from PIL import Image 
+import torch.nn as nn 
+from torchvision import transforms
+
 def create_dataset(dataset, config):
     
     normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
@@ -23,7 +32,7 @@ def create_dataset(dataset, config):
                                             transforms.RandomResizedCrop(config['image_res'],scale=(0.2, 1.0), interpolation=Image.BICUBIC),
                                             transforms.RandomHorizontalFlip(),
                                             RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),      
                                             transforms.ToTensor(),
                                             normalize,
                                             ])    
@@ -31,7 +40,7 @@ def create_dataset(dataset, config):
                                             transforms.RandomResizedCrop(config['image_res'],scale=(0.5, 1.0), interpolation=Image.BICUBIC),
                                             transforms.RandomHorizontalFlip(),
                                             RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
+                                                                            'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),   
                                             transforms.ToTensor(),
                                             normalize,
                                             ])  
@@ -42,12 +51,16 @@ def create_dataset(dataset, config):
                                                 ])
     
     # 
-    romixgen = create_romixgen(config)
+    # romixgen = create_romixgen(config)
 
     
     
     if dataset=='pretrain':
-        dataset = pretrain_dataset(config['train_file'], pretrain_transform)                  
+        dataset = pretrain_dataset(
+            ann_file   = config['train_file'], 
+            image_root = config['image_root'],
+            transform  = pretrain_transform
+            )  
         return dataset      
 
     elif dataset=='re':          

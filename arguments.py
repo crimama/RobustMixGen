@@ -54,10 +54,11 @@ def str_to_int(value):
 
 import ruamel.yaml as yaml
 from easydict import EasyDict
-def parser():
-    parser = argparse.ArgumentParser(description='Active Learning - Benchmark')
+
+def get_parser():
+    parser = argparse.ArgumentParser(description='Roburst_Mixgen')
     parser.add_argument('--default_setting', type=str, default='configs/default.yaml', help='default config file')
-    parser.add_argument('--task_setting', type=str, default='configs/retrieval.yaml', help='task config file')
+    parser.add_argument('--task_setting', type=str, default=None, help='task config file')
     parser.add_argument(
         "opts",
         help="Modify config options using the command-line",
@@ -66,6 +67,16 @@ def parser():
     )
 
     args = parser.parse_args()
+    return args 
+
+def parser(jupyter:bool = False, default_setting:str = None, task_setting:str = None):
+    
+    if jupyter:
+        args = EasyDict({'default_setting': default_setting, 
+                'task_setting'   : task_setting})
+    else:
+        args = get_parser()
+        default_setting = args.default_setting 
 
     # load default config
     cfg = OmegaConf.load(args.default_setting)    
@@ -75,35 +86,37 @@ def parser():
         cfg = OmegaConf.merge(cfg, cfg_task)
     
     # Update experiment name
-    
     if cfg.TASK =='VQA':
         cfg.data_name = cfg.vqa_root.split('/')[2] + '&' + cfg.vg_root.split('/')[2]
+        cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
+    elif cfg.TASK == 'Pretrain':
+        cfg.data_name = cfg.image_root
         cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
     else:
         cfg.data_name = cfg.image_root.split('/')[2]
         cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
     
     # update cfg
-    for k, v in zip(args.opts[0::2], args.opts[1::2]):
-        if k == 'exp_name':
-            cfg.exp_name = f'{cfg.exp_name}-{v}'
-        else:
-            
-            OmegaConf.update(cfg, k, convert_type(v), merge=True)  
+    if not jupyter:
+        for k, v in zip(args.opts[0::2], args.opts[1::2]):
+            if k == 'exp_name':
+                cfg.exp_name = f'{cfg.exp_name}-{v}'
+            else:
+                OmegaConf.update(cfg, k, convert_type(v), merge=True)  
     
-    # update exp_name in case romixgen 
-    if cfg['romixgen']['base']['romixgen_true']:
-        cfg.exp_name = f'{cfg.exp_name}-romixgen'
-    else:
-        pass 
+    #! update exp_name in case romixgen 
+    # if cfg['romixgen']['base']['romixgen_true']:
+    #     cfg.exp_name = f'{cfg.exp_name}-romixgen'
+    # else:
+    #     pass 
     
-    if cfg['mixgen']:
-        cfg.exp_name = f'{cfg.exp_name}-mixgen'
-    else:
-        pass 
+    # if cfg['mixgen']:
+    #     cfg.exp_name = f'{cfg.exp_name}-mixgen'
+    # else:
+    #     pass 
     
     # Output dir 
-    if cfg.TASK == 'VQA':
+    if cfg.TASK in ['VQA', 'Pretrain']:
         cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
     else:
         if cfg['romixgen']['base']['romixgen_true']:
@@ -117,41 +130,6 @@ def parser():
     
     cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir,cfg.exp_name)
         
-    cfg = EasyDict(OmegaConf.to_container(cfg))
-    
-    return cfg  
-
-def jupyter_parser(default_setting:str=None, task_setting:str=None):
-
-    # load default config
-    cfg = OmegaConf.load(default_setting)    
-    
-    if task_setting:
-        cfg_task = OmegaConf.load(task_setting)
-        cfg = OmegaConf.merge(cfg, cfg_task)
-    
-    # Update experiment name
-    if cfg.TASK =='VQA':
-        cfg.data_name = cfg.vqa_root.split('/')[2] + '&' + cfg.vg_root.split('/')[2]
-        cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
-    else:
-        cfg.data_name = cfg.image_root.split('/')[2]
-        cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
-    
-    # Output dir 
-    if cfg.TASK == 'VQA':
-        cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
-    else:
-        if cfg['romixgen']['base']['romixgen_true']:
-            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'romixgen')
-            
-        elif cfg['mixgen']:
-            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'mixgen')
-            
-        else:
-            cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'clean')
-    
-    cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir,cfg.exp_name)
     cfg = EasyDict(OmegaConf.to_container(cfg))
     
     return cfg  

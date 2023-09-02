@@ -155,4 +155,5 @@ wandb/
 .yaml 
 *.yaml 
 configs/.yaml 
-
+examples/*
+pycocotools/*

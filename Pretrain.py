@@ -36,7 +36,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
@@ -47,7 +47,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     step_size = 100
     warmup_iterations = warmup_steps*step_size  
     
-    if args.distributed:
+    if config.args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
     for i, (image, text) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
@@ -83,17 +83,11 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}    
     
     
-def main(args, config):
-    utils.init_distributed_mode(args)    
-    
+def main(args, config):    
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    utils.set_seed(args.seed + utils.get_rank())
     
     start_epoch = 0
     max_epoch = config['schedular']['epochs']
@@ -110,22 +104,25 @@ def main(args, config):
     else:
         samplers = [None]
 
-    data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[0], is_trains=[True], collate_fns=[None])[0]
-
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[config.num_workers], is_trains=[True], collate_fns=[None])[0]
 
     #### Model #### 
     print("Creating model")
-    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer, init_deit=True)
     
+    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer, init_deit=True)
     model = model.to(device)   
-        
+    model_without_ddp = model
+    
     arg_opt = utils.AttrDict(config['optimizer'])
     optimizer = create_optimizer(arg_opt, model)
     arg_sche = utils.AttrDict(config['schedular'])
-    lr_scheduler, _ = create_scheduler(arg_sche, optimizer)  
-
+    lr_scheduler, _ = create_scheduler(arg_sche, optimizer)
     
+    if args.distributed:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model_without_ddp = model.module        
+        
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
         state_dict = checkpoint['model']                       
@@ -141,10 +138,6 @@ def main(args, config):
         model.load_state_dict(state_dict)    
         print('load checkpoint from %s'%args.checkpoint)
     
-    model_without_ddp = model
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module    
     
     print("Start training")
     start_time = time.time()
