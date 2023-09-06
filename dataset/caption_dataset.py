@@ -247,12 +247,13 @@ class re_eval_perturb_dataset(Dataset):
         
 
 class pretrain_dataset(Dataset):
-    def __init__(self, ann_file, transform, max_words=30):        
+    def __init__(self, ann_file, image_root, transform, max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
         self.transform = transform
         self.max_words = max_words
+        self.image_root = image_root 
         
         
     def __len__(self):
@@ -267,8 +268,9 @@ class pretrain_dataset(Dataset):
             caption = pre_caption(random.choice(ann['caption']), self.max_words)
         else:
             caption = pre_caption(ann['caption'], self.max_words)
-      
-        image = Image.open(ann['image']).convert('RGB')   
+
+        img_dir = os.path.join(self.image_root, ann['image'])
+        image = Image.open(img_dir).convert('RGB')   
         image = self.transform(image)
         
         return image, caption
