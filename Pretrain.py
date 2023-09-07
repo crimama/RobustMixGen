@@ -25,11 +25,14 @@ import torch.distributed as dist
 from models.model_pretrain import ALBEF
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
+import wandb 
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
+
+from augmentation import mixgen 
 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
@@ -51,6 +54,12 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         data_loader.sampler.set_epoch(epoch)
 
     for i, (image, text) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        image, text = mixgen(
+            image = image,
+            text = text,
+            num = int(image.size(0)/4)
+        )
+        
         optimizer.zero_grad()
 
         image = image.to(device,non_blocking=True) 
@@ -105,6 +114,11 @@ def main(args, config):
         samplers = [None]
 
     data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[config.num_workers], is_trains=[True], collate_fns=[None])[0]
+    
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        if config['wandb']['wandb_use']:
+            wandb.init(project='RobustMixGen_Pretrain', name=config['exp_name'], config=config)
 
     #### Model #### 
     print("Creating model")
@@ -148,6 +162,7 @@ def main(args, config):
             lr_scheduler.step(epoch+warmup_steps)  
             
         train_stats = train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config) 
+        
         if utils.is_main_process():  
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          'epoch': epoch,
@@ -163,6 +178,9 @@ def main(args, config):
             
             with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+                
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)
 
         dist.barrier()  
                 

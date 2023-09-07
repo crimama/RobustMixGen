@@ -1,10 +1,16 @@
 # train_file: ['data/json_pretrain/coco.json', # 113K - 567K 
 #                'data/json_pretrain/vg.json', # 100K - 769K
 #                'data/json_pretrain/cc3m_train.json', # 2.95M - 2.95M
-#                'data/json_pretrain/cc3m_val.json', 
-#                'data/json_pretrain/sbu.json' 860K  
+#                'data/json_pretrain/cc3m_val.json'
+#               #  'data/json_pretrain/sbu.json' #860K  
 #                ]
-train_file: ['../data/json_pretrain/coco.json']
+train_file: ['../data/json_pretrain/coco.json',
+            '../data/json_pretrain/vg.json',
+            '../data/json_pretrain/cc3m_train.json',
+            '../data/json_pretrain/cc3m_val.json',
+            '../data/json_pretrain/sbu.json'
+            ]
+
 bert_config: 'configs/config_bert.json'
 
 image_root: '../data'
@@ -35,3 +41,9 @@ args:
   dist_url: env://
   distributed: True
   evaluate: false
+
+Mixgen:
+  num: 0.25
+
+wandb: 
+  wandb_use: True 
