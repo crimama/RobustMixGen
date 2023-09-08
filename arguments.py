@@ -91,7 +91,7 @@ def parser(jupyter:bool = False, default_setting:str = None, task_setting:str = 
         cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
     elif cfg.TASK == 'Pretrain':
         cfg.data_name = cfg.image_root
-        cfg.exp_name = cfg['TASK'] + '-' + cfg.data_name
+        cfg.exp_name = ''
     else:
         cfg.data_name = cfg.image_root.split('/')[2]
         cfg.exp_name = cfg['TASK'] + '-' + cfg.image_root.split('/')[2]
