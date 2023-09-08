@@ -133,9 +133,6 @@ def main(args, config):
     arg_sche = utils.AttrDict(config['schedular'])
     lr_scheduler, _ = create_scheduler(arg_sche, optimizer)
     
-    if args.distributed:
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module        
         
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
@@ -152,6 +149,9 @@ def main(args, config):
         model.load_state_dict(state_dict)    
         print('load checkpoint from %s'%args.checkpoint)
     
+    if args.distributed:
+        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
+        model_without_ddp = model.module        
     
     print("Start training")
     start_time = time.time()
