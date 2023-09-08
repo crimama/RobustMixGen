@@ -6,6 +6,8 @@ import utils
 
 
 if __name__ == '__main__':
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    
     config = parser()
     args = config.args
     config['output_dir'] = args.output_dir 
