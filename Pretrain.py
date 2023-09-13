@@ -53,12 +53,16 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     if config.args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
+    start_time = time.time() 
     for i, (image, text) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        data_time = time.time() 
+        
         image, text = mixgen(
             image = image,
             text = text,
             num = int(image.size(0)/4)
         )
+        mix_time = time.time()
         
         optimizer.zero_grad()
 
@@ -74,6 +78,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         loss_mlm, loss_ita, loss_itm = model(image, text_input, alpha = alpha)  
             
         loss = loss_mlm + loss_ita + loss_itm    
+        
+        train_time = time.time()
           
         loss.backward()
         optimizer.step()    
@@ -81,10 +87,27 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(loss_ita=loss_ita.item())
         metric_logger.update(loss_itm=loss_itm.item())
-        metric_logger.update(lr=optimizer.param_groups[0]["lr"])         
+        metric_logger.update(lr=optimizer.param_groups[0]["lr"])    
+             
         
         if epoch==0 and i%step_size==0 and i<=warmup_iterations: 
             scheduler.step(i//step_size)         
+        
+        # Time logging 
+        data_time_str = data_time - start_time
+        data_time_str = str(datetime.timedelta(seconds=int(data_time_str)))
+        
+        mix_time_str = mix_time - data_time 
+        mix_time_str = str(datetime.timedelta(seconds=int(mix_time_str)))
+        
+        train_time_str = train_time - mix_time
+        train_time_str = str(datetime.timedelta(seconds=int(train_time_str)))
+        
+        
+        if utils.is_main_process(): 
+            print(f"Data Time : {data_time_str} | mix_time : {mix_time_str} | train_time : {train_time_str}")
+
+        start_time = time.time()
         
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -115,10 +138,7 @@ def main(args, config):
 
     data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[config.num_workers], is_trains=[True], collate_fns=[None])[0]
     
-    #### wandb logging #### 
-    if utils.is_main_process(): 
-        if config['wandb']['wandb_use']:
-            wandb.init(project='RobustMixGen_Pretrain', name=config['exp_name'], config=config)
+    
 
     #### Model #### 
     print("Creating model")
@@ -149,6 +169,11 @@ def main(args, config):
         model.load_state_dict(state_dict)    
         print('load checkpoint from %s'%args.checkpoint)
     
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        if config['wandb']['wandb_use']:
+            wandb.init(project='RobustMixGen_Pretrain', name=f"pretrain-{start_epoch}", config=config)
+            
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
         model_without_ddp = model.module        
