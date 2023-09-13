@@ -17,7 +17,7 @@ image_root: '../data'
 image_res: 256
 vision_width: 768
 embed_dim: 256
-batch_size: 64
+batch_size: 128
 temp: 0.07
 mlm_probability: 0.15
 queue_size: 65536
@@ -46,4 +46,4 @@ Mixgen:
   num: 0.25
 
 wandb: 
-  wandb_use: True 
+  wandb_use: false
