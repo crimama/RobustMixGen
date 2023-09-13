@@ -10,11 +10,19 @@ import os
 
 def mixgen(image, text, num, lam=0.5):
     # default MixGen
-    for i in range(num):
-        # image mixup
-        image[i,:] = lam * image[i,:] + (1 - lam) * image[i+num,:] # original code 
+    # for i in range(num):
+    #     # image mixup
+    #     image[i,:] = lam * image[i,:] + (1 - lam) * image[i+num,:] # original code 
+    #     # text concat
+    #     text[i] = text[i] + " " + text[i+num] # original code 
+    
+    # Image 
+    image[:num,:] = lam * image[:num,:] + (1-lam) + image[num:2*num,:]
+    
+    for i in range(num): 
         # text concat
         text[i] = text[i] + " " + text[i+num] # original code 
+    
     return image, text
 
 
