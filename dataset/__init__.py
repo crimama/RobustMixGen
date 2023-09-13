@@ -64,14 +64,7 @@ def create_dataset(dataset, config):
         return dataset      
 
     elif dataset=='re':          
-        train_dataset = re_train_dataset(ann_file      = config['train_file'],
-                                        transform      = train_transform,
-                                        image_root     = config['image_root'], 
-                                        romixgen       = romixgen,                                    # romixgen object 
-                                        romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                        romixgen_prob  = config['romixgen']['base']['romixgen_prob'],   # probability for augmentation 
-                                        dataset        = config['dataset']
-                                        )
+        train_dataset = re_train_dataset(config['train_file'], train_transform, config['image_root'])
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root']) 
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset   

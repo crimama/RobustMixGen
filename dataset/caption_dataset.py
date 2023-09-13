@@ -15,27 +15,13 @@ from dataset.utils import pre_caption
 
 
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file: str, transform: list, image_root: str, romixgen: object, 
-                romixgen_true: bool = True ,romixgen_prob: float = 0.1, max_words: int = 30, dataset: str = 'coco'):        
-        '''
-        ann_file : annotation file : [{'caption': 'A woman wearing a net on her head cutting a cake. ',
-                                        'image ': 'COCO_val2014_000000522418.jpg',
-                                        'image_id': 'coco_522418'},...
-        
-        '''
+    def __init__(self, ann_file, transform, image_root, max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
-            
-        self.transform = transform # transform for nomral image 
-        self.image_root = image_root 
+        self.transform = transform
+        self.image_root = image_root
         self.max_words = max_words
-        
-        self.romixgen = romixgen 
-        self.romixgen_true = romixgen_true 
-        self.romixgen_prob = romixgen_prob
-        self.dataset = dataset 
-        
         self.img_ids = {}   
         
         n = 0
@@ -49,44 +35,16 @@ class re_train_dataset(Dataset):
         return len(self.ann)
     
     def __getitem__(self, index):    
+        
         ann = self.ann[index]
         
-        if (self.romixgen_true) & (random.random() < self.romixgen_prob):
-            if self.dataset == 'coco':
-                img_id = ann['image_id'].split('_')[-1]
-                image,caption, img_id = self.romixgen(img_id)
-                return image, caption, self.img_ids['coco'+'_'+img_id]
-            elif self.dataset == 'flickr':
-                
-                # img_id = ann['image_id']
-                # image,caption, img_id = self.romixgen(img_id)
-                # return image, caption, self.img_ids[img_id]
-                
-                mix_ann = np.random.choice(self.ann)
-                img_id = ann['image_id']
-                
-                image_path = os.path.join(self.image_root,ann['image'])
-                image0 = Image.open(image_path).convert('RGB')
-                
-                image_path = os.path.join(self.image_root,mix_ann['image'])
-                image1 = Image.open(image_path).convert('RGB')
-                
-                #Mixgen
-                image = 0.5 * np.array(self.transform.transforms[0](image0)) + 0.5 * np.array(self.transform.transforms[0](image1))
-                image = transforms.Compose(self.transform.transforms[1:])(Image.fromarray(image.astype(np.uint8)))
-                
-                caption0 = pre_caption(ann['caption'],self.max_words)
-                caption1 = pre_caption(mix_ann['caption'],self.max_words)
-                caption = caption0 + " " + caption1
-                
-                return image, caption, self.img_ids[img_id]
-            
-        else:
-            image_path = os.path.join(self.image_root,ann['image'])
-            image = Image.open(image_path).convert('RGB')
-            image = self.transform(image)
-            caption = pre_caption(ann['caption'],self.max_words)
-            return image, caption, self.img_ids[ann['image_id']]
+        image_path = os.path.join(self.image_root,ann['image'])        
+        image = Image.open(image_path).convert('RGB')   
+        image = self.transform(image)
+        
+        caption = pre_caption(ann['caption'], self.max_words) 
+
+        return image, caption, self.img_ids[ann['image_id']]
 
 class re_mixgen(Dataset):
     def __init__(self, ann_file: str, transform: list, image_root: str, romixgen: object, 
