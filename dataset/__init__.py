@@ -114,6 +114,13 @@ def create_sampler(datasets, shuffles, num_tasks, global_rank):
         samplers.append(sampler)
     return samplers     
 
+def re_collate_fn(batch):
+    image_list, caption_list, idx_list = [], [], []
+    for image, caption, idx in batch:
+        image_list.append(image)
+        caption_list.append(caption)
+        idx_list.append(idx)
+    return image_list, caption_list, idx_list
 
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
     loaders = []

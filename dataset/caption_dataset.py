@@ -13,13 +13,15 @@ Image.MAX_IMAGE_PIXELS = None
 from torchvision import transforms 
 from dataset.utils import pre_caption
 
+import albumentations as A
 
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file, transform, image_root, img_size = (384,384),  max_words=30):        
+    def __init__(self, ann_file, transform, image_root, img_size = 384,  max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
         self.transform = transform
+        self.resize = A.augmentations.crops.transforms.RandomResizedCrop(img_size, img_size, scale = (0.5,1.0))
         self.img_size = img_size
         self.image_root = image_root
         self.max_words = max_words
@@ -42,7 +44,7 @@ class re_train_dataset(Dataset):
         image_path = os.path.join(self.image_root,ann['image'])        
         # image = Image.open(image_path).convert('RGB')   
         image = cv2.imread(image_path)
-        image = cv2.resize(image, dsize= self.img_size)
+        image = self.resize(image=image)['image']
         # image = self.transform(image)
         
         caption = pre_caption(ann['caption'], self.max_words) 
