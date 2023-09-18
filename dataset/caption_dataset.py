@@ -13,13 +13,15 @@ Image.MAX_IMAGE_PIXELS = None
 from torchvision import transforms 
 from dataset.utils import pre_caption
 
+import albumentations as A
 
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file, transform, image_root, img_size = (384,384),  max_words=30):        
+    def __init__(self, ann_file, transform, image_root, img_size = 384,  max_words=30):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
         self.transform = transform
+        self.resize = A.augmentations.crops.transforms.RandomResizedCrop(img_size, img_size, scale = (0.5,1.0))
         self.img_size = img_size
         self.image_root = image_root
         self.max_words = max_words
@@ -42,82 +44,13 @@ class re_train_dataset(Dataset):
         image_path = os.path.join(self.image_root,ann['image'])        
         # image = Image.open(image_path).convert('RGB')   
         image = cv2.imread(image_path)
-        image = cv2.resize(image, dsize= self.img_size)
+        image = self.resize(image=image)['image']
         # image = self.transform(image)
         
         caption = pre_caption(ann['caption'], self.max_words) 
 
         return image, caption, self.img_ids[ann['image_id']]
         
-
-class re_mixgen(Dataset):
-    def __init__(self, ann_file: str, transform: list, image_root: str, romixgen: object, 
-                romixgen_true: bool = True ,romixgen_prob: float = 0.1, max_words: int = 30, dataset: str = 'coco'):        
-        '''
-        ann_file : annotation file : [{'caption': 'A woman wearing a net on her head cutting a cake. ',
-                                        'image ': 'COCO_val2014_000000522418.jpg',
-                                        'image_id': 'coco_522418'},...
-        
-        '''
-        self.ann = []
-        for f in ann_file:
-            self.ann += json.load(open(f,'r'))
-            
-        self.transform = transform # transform for nomral image 
-        self.image_root = image_root 
-        self.max_words = max_words
-        
-        self.romixgen = romixgen 
-        self.romixgen_true = romixgen_true 
-        self.romixgen_prob = romixgen_prob
-        self.dataset = dataset 
-        
-        self.img_ids = {}   
-        
-        n = 0
-        for ann in self.ann:
-            img_id = ann['image_id']
-            if img_id not in self.img_ids.keys():
-                self.img_ids[img_id] = n
-                n += 1    
-        
-    def __len__(self):
-        return len(self.ann)
-    
-    def __getitem__(self, index):    
-        ann = self.ann[index]
-        mix_ann = np.random.choice(self.ann)
-        
-        if (self.romixgen_true) & (random.random() < self.romixgen_prob):
-            
-            if self.dataset == 'coco':
-                img_id = ann['image_id'].split('_')[-1]
-                image,caption, img_id = self.romixgen(img_id)
-                return image, caption, self.img_ids['coco'+'_'+img_id]
-            
-            elif self.dataset == 'flickr':
-                
-                image_path = os.path.join(self.image_root,ann['image'])
-                image0 = Image.open(image_path).convert('RGB')
-                caption0 = pre_caption(ann['caption'],self.max_words)
-                
-                mix_ann = np.random.choice(self.ann)
-                
-                image_path = os.path.join(self.image_root,mix_ann['image'])
-                image1 = Image.open(image_path).convert('RGB')
-                caption1 = pre_caption(mix_ann['caption'],self.max_words)
-                
-                image = 0.5 * image0 + 0.5 * image1
-                caption = caption0 + " " + caption1
-                
-                return image, caption, self.img_ids[img_id]
-            
-        else:
-            image_path = os.path.join(self.image_root,ann['image'])
-            image = Image.open(image_path).convert('RGB')
-            image = self.transform(image)
-            caption = pre_caption(ann['caption'],self.max_words)
-            return image, caption, self.img_ids[ann['image_id']]
 
 class re_eval_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root, max_words=30):        

@@ -13,7 +13,7 @@ from dataset.vqa_dataset import vqa_dataset, cal_answer_weights
 from dataset.grounding_dataset import grounding_dataset
 from dataset.randaugment import RandomAugment
 
-from augmentation import create_romixgen
+
 
 import numbers
 import numpy as np
@@ -50,15 +50,11 @@ def create_dataset(dataset, config):
                                                 normalize,
                                                 ])
     
-    # 
-    # romixgen = create_romixgen(config)
-
-    
-    
     if dataset=='pretrain':
         dataset = pretrain_dataset(
             ann_file   = config['train_file'], 
             image_root = config['image_root'],
+            img_size   = (config['image_res'],config['image_res']),
             transform  = pretrain_transform
             )  
         return dataset      
@@ -70,50 +66,18 @@ def create_dataset(dataset, config):
         return train_dataset, val_dataset, test_dataset   
 
     elif dataset=='vqa': 
-        train_dataset = vqa_dataset(
-                                    ann_file      = config['train_file'], 
-                                    transform     = train_transform, 
-                                    vqa_root      = config['vqa_root'], 
-                                    vg_root       = config['vg_root'], 
-                                    romixgen      = romixgen,                                    # romixgen object 
-                                    romixgen_true = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                    romixgen_prob = config['romixgen']['base']['romixgen_prob'], # probability for augmentation 
-                                    split         = 'train',
-                                    answer_list   = config['answer_list']
-                                ) 
-        vqa_test_dataset = vqa_dataset(
-                                        ann_file      = config['train_file'], 
-                                        transform     = train_transform, 
-                                        vqa_root      = config['vqa_root'], 
-                                        vg_root       = config['vg_root'], 
-                                        romixgen      = romixgen,                                    # romixgen object 
-                                        romixgen_true = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                        romixgen_prob = config['romixgen']['base']['romixgen_prob'], # probability for augmentation 
-                                        split         = 'test',
-                                        answer_list   = config['answer_list']
-                                ) 
+        train_dataset = vqa_dataset(config['train_file'], train_transform, config['vqa_root'], config['vg_root'], split='train') 
+        vqa_test_dataset = vqa_dataset(config['test_file'], test_transform, config['vqa_root'], config['vg_root'], split='test', answer_list=config['answer_list'])       
         return train_dataset, vqa_test_dataset
 
     elif dataset=='nlvr':   
-        train_dataset = nlvr_dataset(ann_file      = config['train_file'], 
-                                     transform     = train_transform,
-                                     image_root    = config['image_root'],
-                                     romixgen      = romixgen,
-                                     romixgen_true = config['romixgen']['base']['romixgen_true'],
-                                     romixgen_prob = config['romixgen']['base']['romixgen_prob']
-                                     )  
+        train_dataset = nlvr_dataset(config['train_file'], train_transform, config['image_root'])  
         val_dataset = nlvr_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = nlvr_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset        
                
-    elif dataset=='ve':           
-        train_dataset = ve_dataset(ann_file       = config['train_file'],
-                                    transform      = train_transform,
-                                    image_root     = config['image_root'],
-                                    romixgen       = romixgen,                                    # romixgen object 
-                                    romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                    romixgen_prob  = config['romixgen']['base']['romixgen_prob']  # probability for augmentation 
-                                    )
+    elif dataset=='ve':   
+        train_dataset = ve_dataset(config['train_file'], train_transform, config['image_root'])  
         val_dataset = ve_dataset(config['val_file'], test_transform, config['image_root'])  
         test_dataset = ve_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset     
@@ -127,21 +91,8 @@ def create_dataset(dataset, config):
                 transforms.ToTensor(),
                 normalize,
             ])         
-        train_dataset = grounding_dataset(  ann_file       = config['train_file'],
-                                            transform      = train_transform,
-                                            image_root     = config['image_root'],
-                                            romixgen       = romixgen,                                    # romixgen object 
-                                            romixgen_true  = config['romixgen']['base']['romixgen_true'], # romixgen yes / no 
-                                            romixgen_prob  = config['romixgen']['base']['romixgen_prob']  # probability for augmentation 
-                                            )
-        test_dataset = grounding_dataset(ann_file      = config['test_file'],
-                                        transform      = test_transform,
-                                        image_root     = config['image_root'],
-                                        romixgen       = romixgen,                  # romixgen object 
-                                        romixgen_true  = False,                     # romixgen yes / no 
-                                        romixgen_prob  = 0,                         # probability for augmentation 
-                                        mode           = 'test'
-                                        )
+        train_dataset = grounding_dataset(config['train_file'], train_transform, config['image_root'], mode='train')       
+        test_dataset = grounding_dataset(config['test_file'], test_transform, config['image_root'], mode='test')             
         return train_dataset, test_dataset    
     
 
@@ -163,6 +114,13 @@ def create_sampler(datasets, shuffles, num_tasks, global_rank):
         samplers.append(sampler)
     return samplers     
 
+def re_collate_fn(batch):
+    image_list, caption_list, idx_list = [], [], []
+    for image, caption, idx in batch:
+        image_list.append(image)
+        caption_list.append(caption)
+        idx_list.append(idx)
+    return image_list, caption_list, idx_list
 
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
     loaders = []
