@@ -5,4 +5,5 @@ from .romixgen_retrieval import RetrievalRomixgen
 from .romixgen_ve import VERomixgen
 from .romixgen_nlvr import NLVRRomixgen 
 from .factory import create_romixgen 
+from .romixgen import Romixgen
 from .mixgen import mixgen 
