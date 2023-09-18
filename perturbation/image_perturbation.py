@@ -554,6 +554,8 @@ print('There are '+str(len(imglist))+' images\n')
 method_chunk = [clean,gaussian_noise,shot_noise,impulse_noise,speckle_noise,defocus_blur,glass_blur,zoom_blur,motion_blur,
                 fog,frost,snow,contrast,brightness,pixelate,elastic_transform,jpeg_compression]
 
+#method_chunk = [zoom_blur,motion_blur,fog,frost,snow,contrast,brightness,pixelate,elastic_transform,jpeg_compression]
+
 def get_method_chunk():
     return method_chunk
 

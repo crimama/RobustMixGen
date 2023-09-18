@@ -25,18 +25,21 @@ import torch.distributed as dist
 from models.model_pretrain import ALBEF
 from models.vit import interpolate_pos_embed
 from models.tokenization_bert import BertTokenizer
+import wandb 
 
 import utils
 from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 
+from augmentation import mixgen 
+
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
     # train
     model.train()  
     
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
     metric_logger.add_meter('lr', utils.SmoothedValue(window_size=50, fmt='{value:.6f}'))
     metric_logger.add_meter('loss_mlm', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
     metric_logger.add_meter('loss_ita', utils.SmoothedValue(window_size=50, fmt='{value:.4f}'))
@@ -47,12 +50,20 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     step_size = 100
     warmup_iterations = warmup_steps*step_size  
     
-    if args.distributed:
+    if config.args.distributed:
         data_loader.sampler.set_epoch(epoch)
 
+    start_time = time.time() 
     for i, (image, text) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
-        #image, text =mg.mixgen(image, text, num=16)
-        #image, text =mg.ro_mixgen(image, text)
+        data_time = time.time() 
+        
+        image, text = mixgen(
+            image = image,
+            text = text,
+            num = int(image.size(0)/4)
+        )
+        mix_time = time.time()
+        
         optimizer.zero_grad()
 
         image = image.to(device,non_blocking=True) 
@@ -67,6 +78,8 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         loss_mlm, loss_ita, loss_itm = model(image, text_input, alpha = alpha)  
             
         loss = loss_mlm + loss_ita + loss_itm    
+        
+        train_time = time.time()
           
         loss.backward()
         optimizer.step()    
@@ -74,10 +87,27 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         metric_logger.update(loss_mlm=loss_mlm.item())
         metric_logger.update(loss_ita=loss_ita.item())
         metric_logger.update(loss_itm=loss_itm.item())
-        metric_logger.update(lr=optimizer.param_groups[0]["lr"])         
+        metric_logger.update(lr=optimizer.param_groups[0]["lr"])    
+             
         
         if epoch==0 and i%step_size==0 and i<=warmup_iterations: 
             scheduler.step(i//step_size)         
+        
+        # Time logging 
+        data_time_str = data_time - start_time
+        data_time_str = str(datetime.timedelta(seconds=int(data_time_str)))
+        
+        mix_time_str = mix_time - data_time 
+        mix_time_str = str(datetime.timedelta(seconds=int(mix_time_str)))
+        
+        train_time_str = train_time - mix_time
+        train_time_str = str(datetime.timedelta(seconds=int(train_time_str)))
+        
+        
+        if utils.is_main_process(): 
+            print(f"Data Time : {data_time_str} | mix_time : {mix_time_str} | train_time : {train_time_str}")
+
+        start_time = time.time()
         
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
@@ -85,17 +115,11 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}    
     
     
-def main(args, config):
-    utils.init_distributed_mode(args)    
-    
+def main(args, config):    
     device = torch.device(args.device)
 
     # fix the seed for reproducibility
-    seed = args.seed + utils.get_rank()
-    torch.manual_seed(seed)
-    np.random.seed(seed)
-    random.seed(seed)
-    cudnn.benchmark = True
+    utils.set_seed(args.seed + utils.get_rank())
     
     start_epoch = 0
     max_epoch = config['schedular']['epochs']
@@ -112,22 +136,24 @@ def main(args, config):
     else:
         samplers = [None]
 
-    data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[0], is_trains=[True], collate_fns=[None])[0]
-
-    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    data_loader = create_loader(datasets,samplers,batch_size=[config['batch_size']], num_workers=[config.num_workers], is_trains=[True], collate_fns=[None])[0]
+    
+    
 
     #### Model #### 
     print("Creating model")
-    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer, init_deit=True)
     
+    tokenizer = BertTokenizer.from_pretrained(args.text_encoder)
+    model = ALBEF(config=config, text_encoder=args.text_encoder, tokenizer=tokenizer, init_deit=True)
     model = model.to(device)   
-        
+    model_without_ddp = model
+    
     arg_opt = utils.AttrDict(config['optimizer'])
     optimizer = create_optimizer(arg_opt, model)
     arg_sche = utils.AttrDict(config['schedular'])
-    lr_scheduler, _ = create_scheduler(arg_sche, optimizer)  
-
+    lr_scheduler, _ = create_scheduler(arg_sche, optimizer)
     
+        
     if args.checkpoint:    
         checkpoint = torch.load(args.checkpoint, map_location='cpu') 
         state_dict = checkpoint['model']                       
@@ -143,10 +169,14 @@ def main(args, config):
         model.load_state_dict(state_dict)    
         print('load checkpoint from %s'%args.checkpoint)
     
-    model_without_ddp = model
+    #### wandb logging #### 
+    if utils.is_main_process(): 
+        if config['wandb']['wandb_use']:
+            wandb.init(project='RobustMixGen_Pretrain', name=f"pretrain-{start_epoch}", config=config)
+            
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[args.gpu])
-        model_without_ddp = model.module    
+        model_without_ddp = model.module        
     
     print("Start training")
     start_time = time.time()
@@ -157,6 +187,7 @@ def main(args, config):
             lr_scheduler.step(epoch+warmup_steps)  
             
         train_stats = train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config) 
+        
         if utils.is_main_process():  
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                          'epoch': epoch,
@@ -172,6 +203,9 @@ def main(args, config):
             
             with open(os.path.join(args.output_dir, "log.txt"),"a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+                
+            if config['wandb']['wandb_use']:
+                wandb.log(log_stats)
 
         dist.barrier()  
                 

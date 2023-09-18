@@ -7,7 +7,7 @@ test_file: ['../data/json_downstream/NLVR/nlvr_test.json']
 
 image_root: '../data/NLVR2/Images' 
 
-batch_size: 2
+batch_size: 32
 
 bert_config: 'configs/config_bert.json'
 

@@ -65,14 +65,13 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}  
 
 def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)  
-    
+            
     device = torch.device(args.device)
     
     # fix the seed for reproducibility
@@ -87,7 +86,7 @@ def eval_text(args, config):
     cocos = json.load(open(config['coco_file'],'r'))   
         
     #### Dataset #### 
-    for pertur in pertur_list:
+    for pertur in pertur_list[5:]:
         print("Creating dataset")
         grd_train_dataset, _ = create_dataset('grounding', config) 
         test_dataset = grounding_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur = pertur)
@@ -120,7 +119,7 @@ def eval_text(args, config):
                 grounding_acc = grounding_eval(results, dets, cocos, refer, alpha=0.5, mask_size=24)
                 log_stats = {**{f'{k}': v for k, v in grounding_acc.items()},
                             'epoch': epoch,
-                            'pertur_type' : 'Image', 
+                            'pertur_type' : 'Text', 
                             'pertur': str(pertur).split(' ')[1]
                         }   
                 
@@ -141,7 +140,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.grounding_dataset import grounding_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)  
+      
     
     device = torch.device(args.device)
     
@@ -218,6 +217,7 @@ def val(model, data_loader, tokenizer, device, gradcam_mode, block_num, config):
     print_freq = 50
     
     if gradcam_mode=='itm':
+        # 중간에 찍힌 attention score map을 저장하도록 하는 option 
         model.text_encoder.base_model.base_model.encoder.layer[block_num].crossattention.self.save_attention = True
      
     result = []
@@ -283,7 +283,7 @@ def val(model, data_loader, tokenizer, device, gradcam_mode, block_num, config):
 
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
@@ -336,9 +336,11 @@ def main(args, config):
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
             train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
-            
+        
+        # gradcam 추출    
         result = val(model_without_ddp, test_loader, tokenizer, device, args.gradcam_mode, args.block_num, config)
-
+        
+        # 분산 처리에서 나온 결과 main으로 병합 
         results = collect_result(result, args.result_dir, 'epoch%d'%epoch, is_json=False, is_list=True)
 
         if utils.is_main_process():  

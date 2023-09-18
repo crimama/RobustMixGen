@@ -5,7 +5,8 @@ test_file: '../data/json_downstream/VE/ve_test.json'
 
 image_root: '../data/Flickr30K/Images'
 
-
+batch_size_train: 64
+batch_size_test: 128
 
 warm_up: False
 
@@ -14,8 +15,7 @@ schedular: {sched: cosine, lr: 2e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, war
 
 
 
-
-
 romixgen:
   base:
-    img_info_json : '../data/json_downstream/VE/romixgen_ve.json'
+    img_info_json : '../data/json_downstream/VE/romixgen_ve2.json'
+    obj_bg_threshold : [0.3,0.6]

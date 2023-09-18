@@ -1,5 +1,4 @@
 import warnings
-warnings.filterwarnings("ignore")
 import argparse
 import os
 import ruamel.yaml as yaml
@@ -32,7 +31,7 @@ from augmentation import mixgen as mg
 import nlpaug.augmenter.word as naw
 from lavis.models import load_model_and_preprocess as create_caption_model
 from arguments import parser 
-
+from augmentation import mixgen 
 
 
 
@@ -51,6 +50,11 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     
     for i,(image, text, idx) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):        
         
+        # Mixgen 
+        if config['mixgen']:
+            num = int(data_loader.batch_size/2)
+            image,text = mixgen(image,list(text),num)
+            
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
         text_input = tokenizer(text, padding='longest', max_length=30, return_tensors="pt").to(device)  
@@ -76,7 +80,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}  
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}  
 
 
 
@@ -169,7 +173,7 @@ def evaluation(model, data_loader, tokenizer, device, config):
         score = model.itm_head(output.last_hidden_state[:,0,:])[:,1]
         score_matrix_t2i[start+i,topk_idx] = score
 
-    if args.distributed:
+    if config.args.distributed:
         dist.barrier()   
         torch.distributed.all_reduce(score_matrix_i2t, op=torch.distributed.ReduceOp.SUM) 
         torch.distributed.all_reduce(score_matrix_t2i, op=torch.distributed.ReduceOp.SUM)        
@@ -231,7 +235,7 @@ def eval_text(args, config):
     from dataset.caption_dataset import re_eval_perturb_dataset
     from perturbation.text_perturbation import get_method_chunk
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
         
     device = torch.device(args.device)
     print(device)
@@ -283,8 +287,10 @@ def eval_text(args, config):
                 
                 log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Text',
+                            'pertur' : str(pertur).split(' ')[1]
                             }
-                with open(os.path.join(args.output_dir, "Eval_txt_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
@@ -293,7 +299,7 @@ def eval_text(args, config):
             dist.barrier()     
             torch.cuda.empty_cache()
 
-        total_time = time.time() - start_time
+        total_time = time.time() - start_time 
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         print('Training time {}'.format(total_time_str))        
         wandb.finish()
@@ -302,7 +308,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.caption_dataset import re_eval_perturb_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
         
     device = torch.device(args.device)
 
@@ -353,9 +359,10 @@ def eval_image(args, config):
                 
                 log_stats = {**{f'test_{k}': v for k, v in test_result.items()},                  
                             'epoch': epoch,
+                            'pertur_type' : 'Image', 
                             'pertur': str(pertur).split(' ')[1]
                             }
-                with open(os.path.join(args.output_dir, "Eval_img_log.txt"),"a") as f:
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
                     f.write(json.dumps(log_stats) + "\n")     
                 print(log_stats)
                 if config['wandb']['wandb_use']:
@@ -371,7 +378,7 @@ def eval_image(args, config):
         wandb.finish()
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 

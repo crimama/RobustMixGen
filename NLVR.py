@@ -26,6 +26,7 @@ import utils
 from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
+from augmentation import mixgen 
 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
@@ -42,6 +43,14 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     warmup_iterations = warmup_steps*step_size  
  
     for i,(image0, image1, text, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        
+                # Mixgen 
+        if config['mixgen']:
+            num = int(data_loader.batch_size/2)
+            image0,_ = mixgen(image0,list(text),num)
+            image1,text = mixgen(image1,list(text),num)
+            
+            
         images = torch.cat([image0, image1], dim=0)
         images, targets = images.to(device), targets.to(device)   
         
@@ -67,7 +76,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}    
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}    
 
 
 @torch.no_grad()
@@ -75,7 +84,7 @@ def evaluate(model, data_loader, tokenizer, device, config):
     # test
     model.eval()
             
-    metric_logger = utils.MetricLogger(delimiter="  ")
+    metric_logger = utils.MetricLogger(config, delimiter="  ")
 
     header = 'Evaluation:'
     print_freq = 50
@@ -96,13 +105,13 @@ def evaluate(model, data_loader, tokenizer, device, config):
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())   
-    return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
 
 def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
-    from dataset.nlvr_dataset import nlvr_dataset
+    from dataset.nlvr_dataset import nlvr_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -111,13 +120,14 @@ def eval_image(args, config):
     
     model, model_without_ddp, tokenizer = load_model_nlvr(args, config, device)
     
-    #### Dataset #### 
+    #### Dataset #### []
     print("Creating dataset")
-    train_dataset, val_dataset, _ = create_dataset('nlvr', config)  
+    train_dataset, _, _ = create_dataset('nlvr', config)  
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        val_dataset = nlvr_pertur_dataset(config['val_file'],config['image_res'],config['image_root'], img_pertur=pertur)
+        test_dataset = nlvr_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], img_pertur=pertur)
         
         if args.distributed:
             num_tasks = utils.get_world_size()
@@ -126,7 +136,7 @@ def eval_image(args, config):
         else:
             samplers = [None, None, None]
 
-        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+        _, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
                                                 num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
 
         if utils.is_main_process(): 
@@ -137,33 +147,32 @@ def eval_image(args, config):
         print("Start Evaluation")
         start_time = time.time()  
         for epoch in range(0,1):
-            val_stats = evaluate(model, val_loader, tokenizer, device, config)
             test_stats = evaluate(model, test_loader, tokenizer, device, config)
             
             if utils.is_main_process():  
-                log_stats = {**{f'val_{k}': v for k, v in val_stats.items()},
-                            **{f'test_{k}': v for k, v in test_stats.items()},
+                log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},
                             'epoch': epoch,
-                            'pertur_type' : 'Text',
+                            'pertur_type' : 'Image',
                             'pertur' : str(pertur).split(' ')[1]
                             }
             
-            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
-                f.write(json.dumps(log_stats) + "\n")
-            if config['wandb']['wandb_use']:
-                wandb.log(log_stats)    
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)    
         
-        dist.barrier()   
+            dist.barrier()   
                 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))     
+    wandb.finish()
     
 def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
-    from dataset.nlvr_dataset import nlvr_dataset
+    from dataset.nlvr_dataset import nlvr_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -178,7 +187,7 @@ def eval_text(args, config):
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        test_dataset = nlvr_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
+        test_dataset = nlvr_pertur_dataset(config['test_file'],config['image_res'],config['image_root'], txt_pertur=pertur)
         
         if args.distributed:
             num_tasks = utils.get_world_size()
@@ -187,7 +196,7 @@ def eval_text(args, config):
         else:
             samplers = [None, None, None]
 
-        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
+        _, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset], samplers,batch_size=[config['batch_size']]*3,
                                                 num_workers=[0,0,0],is_trains=[True,False,False], collate_fns=[None,None,None])
 
         if utils.is_main_process(): 
@@ -198,31 +207,29 @@ def eval_text(args, config):
         print("Start Evaluation")
         start_time = time.time()  
         for epoch in range(0,1):
-            val_stats = evaluate(model, val_loader, tokenizer, device, config)
             test_stats = evaluate(model, test_loader, tokenizer, device, config)
             
             if utils.is_main_process():  
-                log_stats = {**{f'val_{k}': v for k, v in val_stats.items()},
-                            **{f'test_{k}': v for k, v in test_stats.items()},
+                log_stats = {**{f'test_{k}': v for k, v in test_stats.items()},
                             'epoch': epoch,
                             'pertur_type' : 'Text',
                             'pertur' : str(pertur).split(' ')[1]
                             }
             
-            with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
-                f.write(json.dumps(log_stats) + "\n")
-            if config['wandb']['wandb_use']:
-                wandb.log(log_stats)    
+                with open(os.path.join(args.output_dir, "Eval_log.txt"),"a") as f:
+                    f.write(json.dumps(log_stats) + "\n")
+                if config['wandb']['wandb_use']:
+                    wandb.log(log_stats)    
         
-        dist.barrier()   
+            dist.barrier()   
                 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
     print('Training time {}'.format(total_time_str))     
-            
+    wandb.finish()
     
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
@@ -289,7 +296,7 @@ def main(args, config):
                     'config': config,
                     'epoch': epoch,
                 }
-                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_%02d.pth'%epoch)) 
+                torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth')) 
                 best = float(val_stats['acc'])
                 best_epoch = epoch
             

@@ -146,3 +146,14 @@ output/
 .tar.gz 
 *.tar.gz
 wandb/ 
+*.sh
+*.gitignore
+*.ipynb
+
+.ipynb 
+.sh 
+.yaml 
+*.yaml 
+configs/.yaml 
+examples/*
+pycocotools/*

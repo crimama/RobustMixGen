@@ -25,6 +25,7 @@ from arguments import parser
 from scheduler import create_scheduler
 from optim import create_optimizer
 import wandb 
+from augmentation import mixgen 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config):
     # train
@@ -40,8 +41,15 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     warmup_iterations = warmup_steps*step_size  
     
     for i,(image, question, answer, weights, n) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        
+        # Mixgen 
+        if config['mixgen']:
+            num = int(data_loader.batch_size/2)
+            images,text = mixgen(image,list(question),num)
+        
         image, weights = image.to(device,non_blocking=True), weights.to(device,non_blocking=True)      
         
+        # Tokenizing 
         question_input = tokenizer(question, padding='longest', truncation=True, max_length=25, return_tensors="pt").to(device) 
         answer_input = tokenizer(answer, padding='longest', return_tensors="pt").to(device) 
         
@@ -50,12 +58,15 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         else:
             alpha = config['alpha']*min(1,i/len(data_loader))
 
+        # Model Inference 
         loss = model(image, question_input, answer_input, train=True, alpha=alpha, k=n, weights=weights)        
         
+        # Optimizing 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()    
         
+        # Logging 
         metric_logger.update(loss=loss.item())
         metric_logger.update(lr=optimizer.param_groups[0]["lr"])
         
@@ -65,7 +76,7 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())     
-    return {k: "{:.3f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()} 
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()} 
 
 
 @torch.no_grad()
@@ -100,7 +111,7 @@ def eval_text(args, config):
     from dataset.vqa_dataset import vqa_pertur_dataset
     
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -114,9 +125,19 @@ def eval_text(args, config):
     for pertur in pertur_list:
         config['pertur'] = str(pertur).split(' ')[1]
         print(pertur)
-        train_dataset, _ = create_dataset('vqa', config)    
-        test_dataset = vqa_pertur_dataset(config['train_file'], config['image_res'], config['vqa_root'], config['vg_root'],
-                                          txt_pertur=pertur, answer_list=config['answer_list']) 
+        train_dataset, _ = create_dataset(
+                                        dataset = 'vqa',
+                                        config  = config
+                                        )    
+        
+        test_dataset = vqa_pertur_dataset(
+                                        ann_file = config['train_file'], 
+                                        img_size = config['image_res'], 
+                                        vqa_root = config['vqa_root'],
+                                        vg_root  = config['vg_root'],
+                                        txt_pertur = pertur, 
+                                        answer_list = config['answer_list']
+                                        ) 
 
         if args.distributed:
             num_tasks = utils.get_world_size()
@@ -140,7 +161,11 @@ def eval_text(args, config):
         start_time = time.time()  
         for epoch in range(0,1):  
             vqa_result = evaluation(model, test_loader, tokenizer, device, config)        
-            result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d'%epoch)
+            result_file = save_result(
+                result     = vqa_result,
+                result_dir = args.result_dir,
+                filename   = f"vqa_result_Image_{str(pertur).split(' ')[1]}"
+                )
             
             
             dist.barrier()     
@@ -156,7 +181,7 @@ def eval_image(args, config):
     from dataset.vqa_dataset import vqa_pertur_dataset
     
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -196,7 +221,11 @@ def eval_image(args, config):
         start_time = time.time()  
         for epoch in range(0,1):  
             vqa_result = evaluation(model, test_loader, tokenizer, device, config)        
-            result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d'%epoch)
+            result_file = save_result(
+                result     = vqa_result,
+                result_dir = args.result_dir,
+                filename   = f"vqa_result_Image_{str(pertur).split(' ')[1]}"
+                )
             
             
             dist.barrier()     
@@ -208,7 +237,7 @@ def eval_image(args, config):
         wandb.finish()
 
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
@@ -222,19 +251,31 @@ def main(args, config):
         
     #### Dataset #### 
     print("Creating vqa datasets")
-    datasets = create_dataset('vqa', config)   
+    datasets = create_dataset(
+        dataset = 'vqa',
+        config  = config
+        )   
     
     if args.distributed:
         num_tasks = utils.get_world_size()
         global_rank = utils.get_rank()            
-        samplers = create_sampler(datasets, [True, False], num_tasks, global_rank)         
+        samplers = create_sampler(
+                        datasets    = datasets, 
+                        shuffles    = [True, False],
+                        num_tasks   = num_tasks,
+                        global_rank = global_rank
+                        )         
     else:
         samplers = [None, None]
     
-    train_loader, test_loader = create_loader(datasets,samplers,
-                                                batch_size=[config['batch_size_train'],config['batch_size_test']],
-                                                num_workers=[0,0],is_trains=[True, False], 
-                                                collate_fns=[vqa_collate_fn,None]) 
+    train_loader, test_loader = create_loader(
+        datasets    = datasets,
+        samplers    = samplers,
+        batch_size  = [config['batch_size_train'],config['batch_size_test']],
+        num_workers = [0,0],
+        is_trains   = [True, False], 
+        collate_fns = [vqa_collate_fn,None]
+        ) 
 
     
     
@@ -245,12 +286,22 @@ def main(args, config):
 
     #### Model #### 
     print("Creating model")
-    model, model_without_ddp, tokenizer = load_model_vqa(args, config, device)  
+    model, model_without_ddp, tokenizer = load_model_vqa(
+                                                        args   = args, 
+                                                        config = config, 
+                                                        device = device
+                                                        )  
     
     arg_opt = utils.AttrDict(config['optimizer'])
-    optimizer = create_optimizer(arg_opt, model)
+    optimizer = create_optimizer(
+                                args  = arg_opt, 
+                                model = model
+                                )
     arg_sche = utils.AttrDict(config['schedular'])
-    lr_scheduler, _ = create_scheduler(arg_sche, optimizer)          
+    lr_scheduler, _ = create_scheduler(
+                                        args      = arg_sche, 
+                                        optimizer = optimizer
+                                        )          
     
     #### Start Training #### 
     print("Start training")
@@ -263,7 +314,17 @@ def main(args, config):
         if args.distributed:
             train_loader.sampler.set_epoch(epoch)
 
-        train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config)  
+        train_stats = train(
+            model        = model,
+            data_loader  = train_loader,
+            optimizer    = optimizer,
+            tokenizer    = tokenizer,
+            epoch        = epoch,
+            warmup_steps = warmup_steps,
+            device       = device,
+            scheduler    = lr_scheduler,
+            config       = config
+            )  
 
         if utils.is_main_process():               
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
@@ -282,12 +343,23 @@ def main(args, config):
                 'config': config,
                 'epoch': epoch,
             }
-            torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_%02d.pth'%epoch))  
+            torch.save(save_obj, os.path.join(args.output_dir, 'checkpoint_best.pth'))  
 
         dist.barrier()   
   
-    vqa_result = evaluation(model, test_loader, tokenizer, device, config)        
-    result_file = save_result(vqa_result, args.result_dir, 'vqa_result_epoch%d'%epoch)
+    vqa_result = evaluation(
+                            model       = model, 
+                            data_loader = test_loader, 
+                            tokenizer   = tokenizer, 
+                            device      = device,
+                            config      = config
+                            )
+    
+    result_file = save_result(
+                            result     = vqa_result,
+                            result_dir = args.result_dir,
+                            filename  = 'vqa_result_epoch%d'%epoch
+                            )
                      
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

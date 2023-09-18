@@ -28,6 +28,7 @@ from dataset import create_dataset, create_sampler, create_loader
 from scheduler import create_scheduler
 from optim import create_optimizer
 from arguments import parser 
+from augmentation import mixgen 
 
 
 def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, wandb):
@@ -44,6 +45,11 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
     warmup_iterations = warmup_steps*step_size  
 
     for i,(images, text, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+        
+        # Mixgen 
+        if config['mixgen']:
+            num = int(data_loader.batch_size/2)
+            images,text = mixgen(images,list(text),num)
     
         images, targets = images.to(device,non_blocking=True), targets.to(device,non_blocking=True)
         
@@ -76,7 +82,7 @@ def eval_text(args, config):
     from perturbation.text_perturbation import get_method_chunk
     from dataset.ve_dataset import ve_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+    
     
     device = torch.device(args.device)
     
@@ -143,7 +149,7 @@ def eval_image(args, config):
     from perturbation.image_perturbation import get_method_chunk
     from dataset.ve_dataset import ve_pertur_dataset
     pertur_list = get_method_chunk()
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
     
@@ -220,6 +226,7 @@ def evaluate(model, data_loader, tokenizer, device, config):
         
         images, targets = images.to(device,non_blocking=True), targets.to(device,non_blocking=True)   
         
+        text = [list_unpack(x) for x in text]
         text_inputs = tokenizer(text, padding='longest', return_tensors="pt").to(device)  
 
         prediction = model(images, text_inputs, targets=targets, train=False)  
@@ -227,16 +234,22 @@ def evaluate(model, data_loader, tokenizer, device, config):
         _, pred_class = prediction.max(1)
         accuracy = (targets==pred_class).sum() / targets.size(0)
 
-        metric_logger.meters['acc'].update(accuracy.item(), n=images.size(0))
+        metric_logger.meters['acc'].update(float(accuracy.item()), n=images.size(0))
                 
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger.global_avg())   
-    return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
-    
+    #return {k: "{:.4f}".format(meter.global_avg) for k, meter in metric_logger.meters.items()}
+    return {k: meter.global_avg for k, meter in metric_logger.meters.items()}
+
+def list_unpack(x):
+    if type(x) == list:
+        return x[0]
+    else:
+        return x     
     
 def main(args, config):
-    utils.init_distributed_mode(args)    
+        
     
     device = torch.device(args.device)
 
@@ -277,11 +290,21 @@ def main(args, config):
     warmup_steps = config['schedular']['warmup_epochs']
     best = 0
     best_epoch = 0
+    start_epoch = 0
+    
+    #### load checkpoint #### 
+    if config.args.checkpoint != './output/Pretrain/ALBEF_4M.pth':
+        checkpoint = torch.load(config.args.checkpoint, map_location='cpu')
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        start_epoch = checkpoint['epoch']+1
+        print('All checkpoint loaded')
+        
     
     print("Start training")
     start_time = time.time()
     
-    for epoch in range(0, max_epoch):
+    for epoch in range(start_epoch, max_epoch):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)

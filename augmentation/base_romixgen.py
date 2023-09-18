@@ -19,6 +19,10 @@ class BaseRomixgen:
         '''
         Image info 파일 load 하면서 각 obj, bg로 분류 
         '''
+        
+        if type(obj_bg_threshold) != list:
+            obj_bg_threshold = [obj_bg_threshold, 1.0]
+            
         image_info = json.load(open(image_info_dir))
         for key in image_info.keys():
             # BBOX 영역 비율 계산 
@@ -27,7 +31,7 @@ class BaseRomixgen:
                     img_width, img_height = int(image_info[key]["width"]), int(image_info[key]["height"])
                     max_obj_area_portion = cal_area_portion(image_info[key]['max_obj_bbox'],img_width, img_height)
                     image_info[key]['mop'] = max_obj_area_portion
-                    image_info[key]["obj_bg"] = 'obj' if max_obj_area_portion > obj_bg_threshold else 'bg'
+                    image_info[key]["obj_bg"] = 'obj' if (obj_bg_threshold[0] <= max_obj_area_portion <= obj_bg_threshold[1]) else 'bg'
                 else:
                     image_info[key]['mop'] = 0 
                     image_info[key]['obj_bg'] = 'bg'
@@ -35,24 +39,22 @@ class BaseRomixgen:
                 image_info[key]['mop'] = 0 
                 image_info[key]['obj_bg'] = 'bg'
                 
-            # Obj / Bg 분류 
         return image_info 
     
     def get_obj_bg_pool(self, image_info):
         '''
         앞서 만든 Image info 를 이용해 obj,bg를 key로, image id들을 value로 사용하는 dict 생성 
         '''
-        obj_bg = [] 
-        for key in image_info.keys():
-            obj_bg.append([image_info[key]['obj_bg'], image_info[key]['file_name']])
-            
+        obj_bg = [
+            [image_info[key]['obj_bg'], image_info[key]['file_name']] for key in image_info.keys()
+        ]
         obj_bg = pd.DataFrame(obj_bg)    
         obj_bg[1] = obj_bg[1].apply(lambda x : x.split('_')[-1].lstrip('0').split('.jpg')[0]) #Image id 전처리 
-        get_obj_bg_pool = {
-                        'obj': list(obj_bg[obj_bg[0] == 'obj'][1].values),
-                        'bg' : list(obj_bg[obj_bg[0] == 'bg'][1].values),
-                        }
-        return get_obj_bg_pool
+        return  {
+                'obj': list(obj_bg[obj_bg[0] == 'obj'][1].values),
+                'bg' : list(obj_bg[obj_bg[0] == 'bg'][1].values),
+                }
+         
     
     def select_id(self, image_id):
         '''
@@ -85,6 +87,6 @@ class BaseRomixgen:
         return img, caption, image_id  
     
 def cal_area_portion(bbox, width, height):
-    X,Y,W,H = bbox
-    area_portion = (W * H) / (width * height)
-    return area_portion 
+            X,Y,W,H = bbox
+            area_portion = (W * H) / (width * height)
+            return area_portion 

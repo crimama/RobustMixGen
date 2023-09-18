@@ -10,11 +10,19 @@ import os
 
 def mixgen(image, text, num, lam=0.5):
     # default MixGen
-    for i in range(num):
-        # image mixup
-        image[i,:] = lam * image[i,:] + (1 - lam) * image[i+num,:]
+    # for i in range(num):
+    #     # image mixup
+    #     image[i,:] = lam * image[i,:] + (1 - lam) * image[i+num,:] # original code 
+    #     # text concat
+    #     text[i] = text[i] + " " + text[i+num] # original code 
+    
+    # Image 
+    image[:num,:] = lam * image[:num,:] + (1-lam) + image[num:2*num,:]
+    
+    for i in range(num): 
         # text concat
-        text[i] = text[i] + " " + text[i+num]
+        text[i] = text[i] + " " + text[i+num] # original code 
+    
     return image, text
 
 
@@ -27,66 +35,3 @@ def mixgen_batch(image, text, num, lam=0.5):
         # text concat
         text[i] = text[i] + " " + text[index[i]]
     return image, 
-
-class MixGen:
-    def __init__(self,ann_file,image_root,transform,lam = 0.5):
-        self.ann_file   = json.load(open(ann_file,'r'))
-        self.image_root = image_root
-        self.transform  = transform 
-        self.lam  = lam
-        
-    def __call__(self,ann):
-        ann1 = ann
-        image1 = Image.open(os.path.join(self.image_root,ann1['image']))
-        text1 = ann1['caption']
-        
-        ann2 = np.random.choice(self.ann_file)
-        image2 = Image.open(os.path.join(self.image_root,ann2['image']))
-        text2 = ann2['caption']
-        
-        image = self.lam * self.transform(image1) + (1-self.lam) * self.transform(image2)
-        text = text1 + ' ' + text2
-        
-        return image,text
-
-# 보류 
-
-''' 
-class MixGen_Img:
-    def __init__(self,image_caption,image_root,transform,lam =0.5):
-        self.image_caption   = image_caption
-        self.image_root = image_root
-        self.transform  = transform 
-        self.lam  = lam
-        
-    def __call__(self,ann):
-        ann1 = ann
-        image1 = Image.open(os.path.join(self.image_root,ann1['image']))
-        
-        ann2 = np.random.choice(self.image_caption)
-        image2 = Image.open(os.path.join(self.image_root,ann2['image']))
-        
-        image = self.lam * self.transform(image1) + (1-self.lam) * self.transform(image2)
-        
-        return image
-    
-    
-class MixGen_Img:
-    def __init__(self,image_caption,image_root,transform,lam =0.5):
-        self.image_caption   = image_caption
-        self.image_root = image_root
-        self.transform  = transform 
-        self.lam  = lam
-        
-    def __call__(self,ann):
-        ann1 = ann
-        image1 = Image.open(os.path.join(self.image_root,ann1['image']))
-        
-        ann2 = np.random.choice(self.image_caption)
-        image2 = Image.open(os.path.join(self.image_root,ann2['image']))
-        
-        image = self.lam * self.transform(image1) + (1-self.lam) * self.transform(image2)
-        
-        return image
-        
-'''

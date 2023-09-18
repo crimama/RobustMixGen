@@ -12,10 +12,11 @@ from dataset.randaugment import RandomAugment
 
 class grounding_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root,
-                romixgen: object, romixgen_true: bool, romixgen_prob: float = 0.5,
+                romixgen: object = False, romixgen_true: bool = False, romixgen_prob: float = 0.5,
                 max_words=30, mode='train'):        
-        
-        self.ann = json.load(open(ann_file[0],'r'))
+        self.ann = []
+        for f in ann_file:
+            self.ann += json.load(open(f,'r'))
         self.transform = transform
         self.image_root = image_root
         self.max_words = max_words
@@ -28,8 +29,8 @@ class grounding_dataset(Dataset):
         if self.mode == 'train':
             self.img_ids = {} 
             n = 0
-            for key in self.ann:
-                img_id = self.ann[key]['image'].split('/')[-1]
+            for ann in self.ann:
+                img_id = ann['image'].split('/')[-1]
                 if img_id not in self.img_ids.keys():
                     self.img_ids[img_id] = n
                     n += 1                    
@@ -38,8 +39,7 @@ class grounding_dataset(Dataset):
         return len(self.ann)
     
     def __getitem__(self, index):    
-        key = list(self.ann.keys())[index]
-        ann = self.ann[key]
+        ann = self.ann[index]
         
         img_dir = ann['image'].split('/')[-1]
         img_id  = img_dir.split('_')[-1].lstrip('0').split('.jpg')[0]
@@ -53,7 +53,7 @@ class grounding_dataset(Dataset):
             caption = pre_caption(ann['text'], self.max_words) 
         
         if self.mode=='train':
-            return image, caption, self.img_ids[self.ann[img_id]['image'].split('/')[-1]]
+            return image, caption, self.img_ids[ann['image'].split('/')[-1]]
         else:
             return image, caption, ann['ref_id']
         
@@ -70,17 +70,14 @@ class grounding_pertur_dataset(grounding_dataset):
         self.img_pertur = pertur_check(img_pertur)
         self.txt_pertur = pertur_check(txt_pertur)
         
-    def get_transform(self, img_res):
+    def get_transform(self, img_size):
         normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711))
-        train_transform = transforms.Compose([                        
-                transforms.Resize((img_res,img_res),interpolation=Image.BICUBIC),
-                transforms.RandomHorizontalFlip(),
-                RandomAugment(2,7,isPIL=True,augs=['Identity','AutoContrast','Equalize','Brightness','Sharpness',
-                                                    'ShearX', 'ShearY', 'TranslateX', 'TranslateY', 'Rotate']),     
-                transforms.ToTensor(),
-                normalize,
-            ])        
-        return train_transform 
+        test_transform      = transforms.Compose([
+                                                transforms.Resize((img_size,img_size),interpolation=Image.BICUBIC),
+                                                transforms.ToTensor(),
+                                                normalize,
+                                                ])
+        return test_transform
     
     def __getitem__(self, index):
         ann = self.ann[index]
@@ -91,5 +88,6 @@ class grounding_pertur_dataset(grounding_dataset):
         image = self.transform(Image.fromarray(image).convert('RGB'))     
         
         caption = pre_caption(ann['text'], self.max_words)
+        caption = self.txt_pertur(caption)
         
         return image, caption, ann['ref_id']

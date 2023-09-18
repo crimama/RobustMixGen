@@ -12,8 +12,8 @@ args:
 
 bert_config: 'configs/config_bert.json'
 image_res: 384
-batch_size_train: 2
-batch_size_test: 2
+batch_size_train: 64
+batch_size_test: 128
 
 queue_size: 65536
 momentum: 0.995
@@ -38,17 +38,20 @@ romixgen:
   base:
     romixgen_true: True 
     romixgen_prob: 0.5 
-    obj_bg_threshold : 0.01
+    obj_bg_threshold : 0.1
     img_mix_ratio : 0.5
     img_info_json : '../data/json_downstream/Retrieval/romixgen_retrieval_coco.json'
   image:
     method: 'cutmixup' # ['cutmixup', 'paste']
-    hard_aug: True
+    hard_aug: False
   text:
     method: 'conjunction_concat' # ['replace','concat','captioning','conjunction_concat','txtshuffle','mixconcat']
     backtrans: False
-    txt_aug: True 
+    txt_aug: False 
 wandb:
   wandb_use: True 
+
+#mixgen 
+mixgen: False 
   
 

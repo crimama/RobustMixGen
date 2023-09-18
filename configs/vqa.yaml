@@ -15,10 +15,12 @@ vg_root: '../data/VG/Images'  #image/
 image_root: './'
 k_test: 128
 
+batch_size_train: 64
+
 eos: '[SEP]'
 
 optimizer: {opt: adamW, lr: 2e-5, weight_decay: 0.02}
-schedular: {sched: cosine, lr: 2e-5, epochs: 8, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 4, cooldown_epochs: 0}
+schedular: {sched: cosine, lr: 2e-5, epochs: 5, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 2, cooldown_epochs: 0}
 
 
 
