@@ -11,7 +11,7 @@ cd cocoapi/PythonAPI
 make
 
 
-
+pip install albumentations
 pip install --upgrade pip 
 pip install ruamel.yaml
 pip install transformers==4.26.1
