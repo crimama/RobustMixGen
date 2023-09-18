@@ -11,9 +11,7 @@ from dataset.randaugment import RandomAugment
 
 
 class grounding_dataset(Dataset):
-    def __init__(self, ann_file, transform, image_root,
-                romixgen: object = False, romixgen_true: bool = False, romixgen_prob: float = 0.5,
-                max_words=30, mode='train'):        
+    def __init__(self, ann_file, transform, image_root, max_words=30, mode='train'):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
@@ -22,10 +20,6 @@ class grounding_dataset(Dataset):
         self.max_words = max_words
         self.mode = mode
         
-        self.romixgen = romixgen 
-        self.romixgen_true = romixgen_true 
-        self.romixgen_prob = romixgen_prob
-        
         if self.mode == 'train':
             self.img_ids = {} 
             n = 0
@@ -33,27 +27,26 @@ class grounding_dataset(Dataset):
                 img_id = ann['image'].split('/')[-1]
                 if img_id not in self.img_ids.keys():
                     self.img_ids[img_id] = n
-                    n += 1                    
+                    n += 1            
+        
 
     def __len__(self):
         return len(self.ann)
     
     def __getitem__(self, index):    
+        
         ann = self.ann[index]
         
-        img_dir = ann['image'].split('/')[-1]
-        img_id  = img_dir.split('_')[-1].lstrip('0').split('.jpg')[0]
-        if (self.romixgen_true) & (random.random() < self.romixgen_prob):
-            image,caption, img_id = self.romixgen(img_id)
-
-        else:
-            image_path = os.path.join(self.image_root,ann['image'])            
-            image = Image.open(image_path).convert('RGB')  
-            image = self.transform(image)
-            caption = pre_caption(ann['text'], self.max_words) 
+        image_path = os.path.join(self.image_root,ann['image'])            
+        image = Image.open(image_path).convert('RGB')  
+        image = self.transform(image)
+        
+        caption = pre_caption(ann['text'], self.max_words) 
         
         if self.mode=='train':
-            return image, caption, self.img_ids[ann['image'].split('/')[-1]]
+            img_id = ann['image'].split('/')[-1]
+
+            return image, caption, self.img_ids[img_id]
         else:
             return image, caption, ann['ref_id']
         

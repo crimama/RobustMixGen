@@ -8,17 +8,12 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms 
 
 class ve_dataset(Dataset):
-    def __init__(self, ann_file, transform, image_root, 
-                romixgen: object = None, romixgen_true: bool = False, romixgen_prob: float = 0.0, max_words=30):        
+    def __init__(self, ann_file, transform, image_root, max_words=30):        
         self.ann = json.load(open(ann_file,'r'))
         self.transform = transform
         self.image_root = image_root
         self.max_words = max_words
         self.labels = {'entailment':2,'neutral':1,'contradiction':0}
-        
-        self.romixgen      = romixgen 
-        self.romixgen_true = romixgen_true 
-        self.romixgen_prob = romixgen_prob 
         
     def __len__(self):
         return len(self.ann)
@@ -27,19 +22,14 @@ class ve_dataset(Dataset):
     def __getitem__(self, index):    
         
         ann = self.ann[index]
-        if (self.romixgen_true) & (random.random() < self.romixgen_prob):
-            image, sentence, label = self.romixgen(ann['image'])
-            
-            return image, sentence, self.labels[label]
         
-        else: 
-            image_path = os.path.join(self.image_root,'%s.jpg'%ann['image'])        
-            image = Image.open(image_path).convert('RGB')   
-            image = self.transform(image)          
+        image_path = os.path.join(self.image_root,'%s.jpg'%ann['image'])        
+        image = Image.open(image_path).convert('RGB')   
+        image = self.transform(image)          
 
-            sentence = pre_caption(ann['sentence'], self.max_words)
+        sentence = pre_caption(ann['sentence'], self.max_words)
 
-            return image, sentence, self.labels[ann['label']]
+        return image, sentence, self.labels[ann['label']]
     
 class ve_pertur_dataset(Dataset):
     def __init__(self, ann_file, img_size, image_root, img_pertur=None, txt_pertur=None, max_words=30):
