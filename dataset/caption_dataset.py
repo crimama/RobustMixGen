@@ -50,6 +50,7 @@ class re_train_dataset(Dataset):
         caption = pre_caption(ann['caption'], self.max_words) 
 
         return image, caption, self.img_ids[ann['image_id']]
+        
 
 class re_eval_dataset(Dataset):
     def __init__(self, ann_file, transform, image_root, max_words=30):        
