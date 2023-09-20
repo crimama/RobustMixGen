@@ -8,6 +8,7 @@ import time
 import datetime
 import json
 from pathlib import Path
+from PIL import Image 
 
 import torch
 import torch.nn as nn
@@ -15,6 +16,7 @@ import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
 from torch.utils.data import DataLoader
+from torchvision import transforms 
 
 from models.model_retrieval import ALBEF
 from models.vit import interpolate_pos_embed
@@ -23,19 +25,20 @@ from models import load_model_retrieval
 import wandb 
 
 import utils
-from dataset import create_dataset, create_sampler, create_loader
+from dataset import create_dataset, create_sampler, create_loader, re_collate_fn
 from scheduler import create_scheduler
 from optim import create_optimizer
 
 from augmentation import mixgen as mg 
+from augmentation import Romixgen 
 import nlpaug.augmenter.word as naw
-from lavis.models import load_model_and_preprocess as create_caption_model
+# from lavis.models import load_model_and_preprocess as create_caption_model
 from arguments import parser 
 from augmentation import mixgen 
 
 
 
-def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device, scheduler, config, wandb):
+def train(model, data_loader, optimizer, tokenizer, romixgen, epoch, warmup_steps, device, scheduler, config, wandb):
     # train
     model.train()  
     
@@ -54,6 +57,10 @@ def train(model, data_loader, optimizer, tokenizer, epoch, warmup_steps, device,
         if config['mixgen']:
             num = int(data_loader.batch_size/2)
             image,text = mixgen(image,list(text),num)
+            
+        if config['romixgen']:
+            image,text = romixgen(image, text)
+            image = torch.stack([romixgen.transform(Image.fromarray(x.astype(np.uint8))) for x in image])
             
         image = image.to(device,non_blocking=True)   
         idx = idx.to(device,non_blocking=True)   
@@ -381,7 +388,6 @@ def main(args, config):
         
     
     device = torch.device(args.device)
-
     # fix the seed for reproducibility
     utils.set_seed(args.seed + utils.get_rank())
 
@@ -396,12 +402,28 @@ def main(args, config):
     else:
         samplers = [None, None, None]
     
-    train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
-                                                        batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
-                                                        num_workers=[0,0,0],
-                                                        is_trains=[True, False, False], 
-                                                        collate_fns=[None,None,None])           
+    if config['romixgen']['romixgen_use']:
+        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
+                                                            batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
+                                                            num_workers=[0,0,0],
+                                                            is_trains=[True, False, False], 
+                                                            collate_fns=[re_collate_fn,None,None])           
 
+    else:
+        train_loader, val_loader, test_loader = create_loader([train_dataset, val_dataset, test_dataset],samplers,
+                                                            batch_size=[config['batch_size_train']]+[config['batch_size_test']]*2,
+                                                            num_workers=[0,0,0],
+                                                            is_trains=[True, False, False], 
+                                                            collate_fns=[None,None,None])           
+
+    #### romixgen #### 
+
+    romixgen = Romixgen(device = f"cuda:{utils.get_rank()}",
+                        batch_size = config['batch_size_train'],
+                        mix_ratio  = config['romixgen']['mix_ratio'],
+                        transform =transforms.Compose(train_dataset.transform.transforms[1:]) 
+                        )
+    
     #### wandb logging #### 
     if utils.is_main_process(): 
         if config['wandb']['wandb_use']:
@@ -427,7 +449,7 @@ def main(args, config):
         if not args.evaluate:
             if args.distributed:
                 train_loader.sampler.set_epoch(epoch)
-            train_stats = train(model, train_loader, optimizer, tokenizer, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
+            train_stats = train(model, train_loader, optimizer, tokenizer, romixgen, epoch, warmup_steps, device, lr_scheduler, config, wandb)  
         
         score_val_i2t, score_val_t2i, = evaluation(model_without_ddp, val_loader, tokenizer, device, config)
         score_test_i2t, score_test_t2i = evaluation(model_without_ddp, test_loader, tokenizer, device, config)
