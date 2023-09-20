@@ -7,11 +7,16 @@ from detectron2.config import get_cfg
 from detectron2.data import MetadataCatalog
 
 class Romixgen:
-    def __init__(self, device, score_thresh:float = 0.8, alpha:float = 0.5, batch_size:int = 64, mix_ratio:float = 0.25):
+    def __init__(self, device, 
+                 transform,
+                 score_thresh:float = 0.8, alpha:float = 0.5, 
+                 batch_size:int = 64, mix_ratio:float = 0.25,
+                 ):
         self.detector = self.get_detector(score_thresh, device)
         self.alpha = alpha 
         self.num_mix = int(batch_size * mix_ratio)
         self.batch_size = batch_size 
+        self.transform = transform 
         
     def get_detector(self, score_thresh:float, device:str):
         cfg = get_cfg()
@@ -34,9 +39,13 @@ class Romixgen:
     def postprocess(self, prediction):
         boxes  = prediction._fields['pred_boxes'].tensor
         areas = (boxes[:,2] - boxes[:,0]) * (boxes[:,3] - boxes[:,1])
+        # in case no object in pic
         if len(areas) == 0:
             return { 'bbox' : None, 'label' : None }
-        target_idx = torch.argmax(areas)
+        # choose one object among objects 
+        # target_idx = torch.max(areas)
+        # target_idx = torch.where(areas ==torch.median(areas))[0].item()
+        target_idx = torch.argmin(areas)
         box = boxes[target_idx].type(torch.int).numpy()
 
         classes = prediction._fields['pred_classes']
@@ -46,7 +55,7 @@ class Romixgen:
         output = { 'bbox' : box, 'label' : label }
         return output 
     
-    def mix(self, output, img_obj, img_bg):
+    def img_mix(self, output, img_obj, img_bg):
         bbox = output['bbox']
         if bbox is None:
             return img_obj, None 
@@ -55,10 +64,17 @@ class Romixgen:
 
         obj = img_obj[y0:y1, x0:x1]    
         mix_img = img_obj *0.5 + img_bg * 0.5
-        mix_img[y0:y1, x0:x1] = obj 
+        mix_img[y0:y1, x0:x1] = img_bg[y0:y1, x0:x1] * 0.25 + obj  * 0.75
         label = output['label']
         return mix_img, label 
     
+    def txt_mix(self, obj_label, bg_label, word):
+        if word is None:
+            return bg_label 
+        else:
+            mix_label = f"{obj_label} focusing on {word} and {bg_label}"
+            return mix_label 
+
     @torch.no_grad()
     def __call__(self, imgs, labels):
         img_objs = imgs[:self.num_mix]
@@ -69,12 +85,14 @@ class Romixgen:
         outputs = self.detector.model(inputs)
         # Postprocess 
         outputs = [self.postprocess(x['instances'].to('cpu')) for x in outputs]
-        outputs = np.array([self.mix(output, img_obj, img_bg) for output, img_obj, img_bg  in zip(outputs,img_objs,img_bgs)])
+        outputs = np.array([self.img_mix(output, img_obj, img_bg) for output, img_obj, img_bg  in zip(outputs,img_objs,img_bgs)])
         imgs[:self.num_mix] = outputs[:,0]
         
         # Caption mix
-        labels_objs = labels[:self.num_mix]
-        labels_bgs = labels[int(self.batch_size/2):int(self.batch_size/2)+self.num_mix]
-        labels[:self.num_mix] = [l_obj + l_bg for l_obj, l_bg in zip(labels_objs, labels_bgs)]
+        word_objects = outputs[:,1]
+        obj_labels = labels[:self.num_mix]
+        bg_labels = labels[int(self.batch_size/2):int(self.batch_size/2)+self.num_mix]
+        labels[:self.num_mix] = [self.txt_mix(obj_l,bg_l,word) for obj_l, bg_l, word in zip(obj_labels, bg_labels, word_objects)]
         
-        return imgs, labels 
+        torch.cuda.empty_cache()
+        return imgs, labels
