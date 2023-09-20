@@ -1,6 +1,7 @@
 import torch 
 import numpy as np 
 
+
 from detectron2 import model_zoo
 from detectron2.engine import DefaultPredictor
 from detectron2.config import get_cfg

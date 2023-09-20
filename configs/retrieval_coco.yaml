@@ -6,3 +6,8 @@ test_file: '../data/json_downstream/Retrieval/coco_test.json'
 image_root: '../data/COCO/Images'
 
 schedular: {sched: cosine, lr: 1e-5, epochs: 10, min_lr: 1e-6, decay_rate: 1, warmup_lr: 1e-5, warmup_epochs: 1, cooldown_epochs: 0}
+
+
+romixgen: 
+  romixgen_use: true
+  mix_ratio: 0.25
