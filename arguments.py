@@ -119,7 +119,7 @@ def parser(jupyter:bool = False, default_setting:str = None, task_setting:str = 
     if cfg.TASK in ['VQA', 'Pretrain']:
         cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK)
     else:
-        if cfg['romixgen']['base']['romixgen_true']:
+        if cfg['romixgen']['romixgen_use']:
             cfg['args']['output_dir'] = os.path.join(cfg.args.output_dir, cfg.TASK, cfg.image_root.split('/')[2], 'romixgen')
             
         elif cfg['mixgen']:
