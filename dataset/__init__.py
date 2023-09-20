@@ -54,13 +54,14 @@ def create_dataset(dataset, config):
         dataset = pretrain_dataset(
             ann_file   = config['train_file'], 
             image_root = config['image_root'],
-            img_size   = (config['image_res'],config['image_res']),
             transform  = pretrain_transform
             )  
         return dataset      
 
     elif dataset=='re':          
-        train_dataset = re_train_dataset(config['train_file'], train_transform, config['image_root'])
+        train_dataset = re_train_dataset(config['train_file'], train_transform, config['image_root'],
+                                         img_size = config['image_res'], 
+                                         romixgen = config['romixgen']['romixgen_use'])
         val_dataset = re_eval_dataset(config['val_file'], test_transform, config['image_root']) 
         test_dataset = re_eval_dataset(config['test_file'], test_transform, config['image_root'])                
         return train_dataset, val_dataset, test_dataset   
@@ -120,7 +121,7 @@ def re_collate_fn(batch):
         image_list.append(image)
         caption_list.append(caption)
         idx_list.append(idx)
-    return image_list, caption_list, idx_list
+    return image_list, caption_list, torch.Tensor(idx_list)
 
 def create_loader(datasets, samplers, batch_size, num_workers, is_trains, collate_fns):
     loaders = []
