@@ -16,7 +16,7 @@ from dataset.utils import pre_caption
 import albumentations as A
 
 class re_train_dataset(Dataset):
-    def __init__(self, ann_file, transform, image_root, img_size = 384,  max_words=30):        
+    def __init__(self, ann_file, transform, image_root, img_size = 384,  max_words=30, romixgen=False):        
         self.ann = []
         for f in ann_file:
             self.ann += json.load(open(f,'r'))
@@ -25,6 +25,7 @@ class re_train_dataset(Dataset):
         self.img_size = img_size
         self.image_root = image_root
         self.max_words = max_words
+        self.romixgen = romixgen 
         self.img_ids = {}   
         
         n = 0
@@ -42,10 +43,12 @@ class re_train_dataset(Dataset):
         ann = self.ann[index]
         
         image_path = os.path.join(self.image_root,ann['image'])        
-        # image = Image.open(image_path).convert('RGB')   
-        image = cv2.imread(image_path)
-        image = self.resize(image=image)['image']
-        # image = self.transform(image)
+        image = Image.open(image_path).convert('RGB')   
+        
+        if self.romixgen:
+            image = self.resize(image=np.array(image))['image']
+        else:
+            image = self.transform(image)
         
         caption = pre_caption(ann['caption'], self.max_words) 
 
